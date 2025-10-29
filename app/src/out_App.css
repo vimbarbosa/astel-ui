@@ -1,0 +1,171 @@
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background-color: #f4f6f9;
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+  background-color: #007bff;
+  color: white;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  width: 100%;
+}
+
+/* ===== CONTAINER PRINCIPAL ===== */
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ===== CONTEÚDO PRINCIPAL ===== */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 3rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+  height: 100%;
+  width: 100%;
+}
+
+h1, h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #212529;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* ===== BARRA DE BUSCA ===== */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  width: 100%;
+  gap: 1rem;
+}
+
+.toolbar input {
+  flex: 1;
+  padding: 0.9rem 1.2rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+  transition: 0.2s;
+}
+
+.toolbar input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
+}
+
+.toolbar button {
+  padding: 0.9rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.toolbar button:hover {
+  background-color: #0056b3;
+}
+
+/* ===== TABELA ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+th, td {
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #e9ecef;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+th {
+  background-color: #007bff;
+  color: white;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+tr:hover {
+  background-color: #eef6ff;
+  transition: 0.2s;
+}
+
+/* ===== BOTÕES DE AÇÃO ===== */
+td button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: white;
+  transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+td button:first-child {
+  background-color: #17a2b8;
+}
+
+td button:last-child {
+  background-color: #dc3545;
+}
+
+td button:hover {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
+
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem;
+  }
+
+  form {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
+
+  .toolbar {
+    flex-direction: column;
+  }
+
+  .toolbar button {
+    width: 100%;
+  }
+}
