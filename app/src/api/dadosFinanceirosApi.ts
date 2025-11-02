@@ -12,11 +12,40 @@ export interface DadosFinanceiros {
   valorPago: number;
 }
 
-// 🔹 GET - Todos os registros financeiros
-export async function getAllDadosFinanceiros(): Promise<DadosFinanceiros[]> {
-  const { data } = await http.get("/DadosFinanceiros");
-  return data;
+export interface PaginatedResponse<T> {
+  data: T[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
 }
+
+// 🔹 GET - Registros financeiros paginados
+export async function getPagedDadosFinanceiros(
+  pageNumber = 1,
+  pageSize = 10
+): Promise<PaginatedResponse<DadosFinanceiros>> {
+  const response = await http.get("/DadosFinanceiros", {
+    params: { pageNumber, pageSize },
+  });
+
+  // Axios normaliza headers para lowercase
+  const headers = response.headers;
+
+  const totalCount = Number(headers["x-total-count"] ?? headers["X-Total-Count"] ?? 0);
+  const totalPages = Number(headers["x-total-pages"] ?? headers["X-Total-Pages"] ?? 1);
+  const currentPage = Number(headers["x-current-page"] ?? headers["X-Current-Page"] ?? pageNumber);
+  const size = Number(headers["x-page-size"] ?? headers["X-Page-Size"] ?? pageSize);
+
+  return {
+    data: response.data,
+    totalCount,
+    totalPages,
+    currentPage,
+    pageSize: size,
+  };
+}
+
 
 // 🔹 POST - Criar registro financeiro (com tratamento de erro padronizado)
 export async function createDadosFinanceiros(

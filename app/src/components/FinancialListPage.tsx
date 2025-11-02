@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Outlet } from "react-router-dom";
 import {
-  getAllDadosFinanceiros,
+  getPagedDadosFinanceiros,
   createDadosFinanceiros,
   deleteDadosFinanceiros,
   importDadosFinanceiros,
@@ -13,6 +13,12 @@ export default function FinancialListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [newRecord, setNewRecord] = useState<DadosFinanceiros>({
     matriculaSistel: 0,
     matriculaAstel: 0,
@@ -21,29 +27,29 @@ export default function FinancialListPage() {
     valorPago: 0,
   });
 
-  const [validationError, setValidationError] = useState<string | null>(null);
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const result = await getPagedDadosFinanceiros(page, pageSize);
+      setRecords(result.data);
+      setTotalPages(result.totalPages);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const data = await getAllDadosFinanceiros();
-        setRecords(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchData();
-  }, []);
+  }, [page]);
 
   function validateForm(): string | null {
     if (!newRecord.matriculaSistel || newRecord.matriculaSistel <= 0)
       return "O campo Matrícula Sistel é obrigatório e deve ser maior que zero.";
     if (!newRecord.matriculaAstel || newRecord.matriculaAstel <= 0)
       return "O campo Matrícula Astel é obrigatório e deve ser maior que zero.";
-    if (!newRecord.ano || newRecord.ano < 1900)
-      return "Informe um ano válido.";
+    if (!newRecord.ano || newRecord.ano < 1900) return "Informe um ano válido.";
     if (!newRecord.mes || newRecord.mes < 1 || newRecord.mes > 12)
       return "O campo Mês deve estar entre 1 e 12.";
     if (newRecord.valorPago <= 0)
@@ -60,18 +66,10 @@ export default function FinancialListPage() {
 
     setValidationError(null);
     try {
-      const created = await createDadosFinanceiros(newRecord);
-      setRecords((prev) => [...prev, created]);
+      await createDadosFinanceiros(newRecord);
       alert("Registro criado com sucesso!");
-      setNewRecord({
-        matriculaSistel: 0,
-        matriculaAstel: 0,
-        ano: new Date().getFullYear(),
-        mes: 1,
-        valorPago: 0,
-      });
+      fetchData();
     } catch (err: any) {
-      console.error(err);
       setValidationError(err.message);
     }
   }
@@ -86,20 +84,49 @@ export default function FinancialListPage() {
 
     try {
       await deleteDadosFinanceiros(matriculaSistel, matriculaAstel, ano, mes);
-      setRecords((prev) =>
-        prev.filter(
-          (r) =>
-            !(
-              r.matriculaSistel === matriculaSistel &&
-              r.matriculaAstel === matriculaAstel &&
-              r.ano === ano &&
-              r.mes === mes
-            )
-        )
-      );
-    } catch (err) {
-      console.error(err);
+      fetchData();
+    } catch {
       alert("Erro ao excluir registro.");
+    }
+  }
+
+  // 🔹 Importação
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await importDadosFinanceiros(file);
+      alert("Importação concluída com sucesso!");
+      fetchData();
+    } catch (err: any) {
+      alert("Erro ao importar: " + err.message);
+    }
+  }
+
+  // 🔹 Exportação
+  function handleExport() {
+    try {
+      const csv = [
+        ["Matrícula Sistel", "Matrícula Astel", "Ano", "Mês", "Valor Pago (R$)"],
+        ...records.map((r) => [
+          r.matriculaSistel,
+          r.matriculaAstel,
+          r.ano,
+          r.mes,
+          r.valorPago.toFixed(2),
+        ]),
+      ]
+        .map((row) => row.join(";"))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "dados_financeiros.csv";
+      link.click();
+    } catch {
+      alert("Erro ao exportar registros.");
     }
   }
 
@@ -130,6 +157,7 @@ export default function FinancialListPage() {
         </div>
       )}
 
+      {/* 🔹 Toolbar */}
       <div className="toolbar">
         <input
           type="text"
@@ -138,175 +166,87 @@ export default function FinancialListPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
+        <button onClick={() => setPage(1)}>🔄 Atualizar</button>
+
         <label className="import-btn">
-          📁 Importar Planilha
+          📁 Importar
           <input
             type="file"
             accept=".csv,.xlsx,.xls"
             style={{ display: "none" }}
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              if (confirm(`Importar "${file.name}"?`)) {
-                try {
-                  await importDadosFinanceiros(file);
-                  alert("Importação concluída!");
-                  window.location.reload();
-                } catch {
-                  alert("Erro ao importar arquivo.");
-                }
-              }
-            }}
+            onChange={handleImport}
           />
         </label>
 
-        <button
-          className="import-btn"
-          style={{ background: "#10b981" }}
-          onClick={async () => {
-            try {
-              const res = await fetch(
-                "http://localhost:5000/api/DadosFinanceiros/export"
-              );
-              if (!res.ok) throw new Error("Erro ao exportar dados financeiros.");
-              const blob = await res.blob();
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "dados_financeiros.csv";
-              a.click();
-              a.remove();
-            } catch (err) {
-              console.error(err);
-              alert("Falha ao exportar planilha.");
-            }
-          }}
-        >
-          ⬇️ Exportar Planilha
+        <button className="export-btn" onClick={handleExport}>
+          ⬇️ Exportar
         </button>
       </div>
 
-      <form
-        className="finance-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleAdd();
-        }}
-      >
-        <div className="field">
-          <label>Matrícula Sistel</label>
-          <input
-            type="number"
-            placeholder="Ex: 12345"
-            value={newRecord.matriculaSistel}
-            onChange={(e) =>
-              setNewRecord({
-                ...newRecord,
-                matriculaSistel: Number(e.target.value),
-              })
-            }
-          />
-        </div>
-
-        <div className="field">
-          <label>Matrícula Astel</label>
-          <input
-            type="number"
-            placeholder="Ex: 67890"
-            value={newRecord.matriculaAstel}
-            onChange={(e) =>
-              setNewRecord({
-                ...newRecord,
-                matriculaAstel: Number(e.target.value),
-              })
-            }
-          />
-        </div>
-
-        <div className="field">
-          <label>Ano</label>
-          <input
-            type="number"
-            placeholder="Ex: 2025"
-            value={newRecord.ano}
-            onChange={(e) =>
-              setNewRecord({ ...newRecord, ano: Number(e.target.value) })
-            }
-          />
-        </div>
-
-        <div className="field">
-          <label>Mês</label>
-          <input
-            type="number"
-            placeholder="1–12"
-            value={newRecord.mes ?? ""}
-            onChange={(e) =>
-              setNewRecord({ ...newRecord, mes: Number(e.target.value) })
-            }
-          />
-        </div>
-
-        <div className="field">
-          <label>Valor Pago (R$)</label>
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Ex: 250.00"
-            value={newRecord.valorPago}
-            onChange={(e) =>
-              setNewRecord({ ...newRecord, valorPago: Number(e.target.value) })
-            }
-          />
-        </div>
-
-        <button type="submit">+ Adicionar</button>
-      </form>
-
+      {/* 🔹 Tabela */}
       {filtered.length === 0 ? (
         <p>Nenhum registro encontrado.</p>
       ) : (
-        <table className="finance-table">
-          <thead>
-            <tr>
-              <th>Matrícula Sistel</th>
-              <th>Matrícula Astel</th>
-              <th>Ano</th>
-              <th>Mês</th>
-              <th>Valor Pago (R$)</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr
-                key={`${r.matriculaSistel}-${r.matriculaAstel}-${r.ano}-${r.mes}`}
-              >
-                <td>{r.matriculaSistel}</td>
-                <td>{r.matriculaAstel}</td>
-                <td>{r.ano}</td>
-                <td>{r.mes ?? "-"}</td>
-                <td>{r.valorPago?.toFixed(2) ?? "-"}</td>
-                <td>
-                  <button
-                    className="delete-btn"
-                    onClick={() =>
-                      handleDelete(
-                        r.matriculaSistel,
-                        r.matriculaAstel,
-                        r.ano,
-                        r.mes
-                      )
-                    }
-                  >
-                    🗑️ Excluir
-                  </button>
-                </td>
+        <>
+          <table className="finance-table">
+            <thead>
+              <tr>
+                <th>Matrícula Sistel</th>
+                <th>Matrícula Astel</th>
+                <th>Ano</th>
+                <th>Mês</th>
+                <th>Valor Pago (R$)</th>
+                <th>Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr
+                  key={`${r.matriculaSistel}-${r.matriculaAstel}-${r.ano}-${r.mes}`}
+                >
+                  <td>{r.matriculaSistel}</td>
+                  <td>{r.matriculaAstel}</td>
+                  <td>{r.ano}</td>
+                  <td>{r.mes}</td>
+                  <td>{r.valorPago?.toFixed(2)}</td>
+                  <td>
+                    <button
+                      className="delete-btn"
+                      onClick={() =>
+                        handleDelete(
+                          r.matriculaSistel,
+                          r.matriculaAstel,
+                          r.ano,
+                          r.mes
+                        )
+                      }
+                    >
+                      🗑️ Excluir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* 🔹 Paginação */}
+          <div className="pagination">
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              ◀ Página anterior
+            </button>
+            <span>
+              Página {page} de {totalPages}
+            </span>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Próxima página ▶
+            </button>
+          </div>
+        </>
       )}
+
       <Outlet />
     </div>
   );
