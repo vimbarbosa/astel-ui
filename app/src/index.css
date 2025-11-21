@@ -691,3 +691,290 @@ button, .delete-btn {
     font-size: 0.9rem;
   }
 }
+
+/* =============================================== */
+/*   AJUSTES DE LAYOUT FINANCEIRO — FINAL          */
+/* =============================================== */
+
+/* Alinhamento à esquerda dos cards */
+.form-card {
+  text-align: left !important;
+  padding: 20px 28px !important;
+}
+
+/* Ajuste do título dentro dos cards */
+.form-card h2 {
+  text-align: left !important;
+  margin-bottom: 16px !important;
+}
+
+/* Inputs menores */
+.toolbar input,
+.toolbar select,
+.finance-form input,
+.finance-form select {
+  height: 36px !important;
+  min-width: 180px !important;
+  font-size: 0.85rem !important;
+  padding: 0 10px !important;
+  background: #f8fafc !important;
+  border: none !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 0 1px #d1d5db inset !important;
+}
+
+/* Inputs no foco */
+.toolbar input:focus,
+.finance-form input:focus {
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.25) !important;
+}
+
+/* Botões menores */
+.toolbar button,
+.finance-form button,
+.import-btn,
+.delete-btn {
+  height: 36px !important;
+  padding: 0 14px !important;
+  font-size: 0.85rem !important;
+  border-radius: 6px !important;
+}
+
+/* Botão principal (Adicionar / Buscar) */
+.toolbar button,
+.finance-form button {
+  background: linear-gradient(90deg, #4f46e5, #7c3aed) !important;
+  color: white !important;
+}
+
+/* Delete */
+.delete-btn {
+  background: #ef4444 !important;
+}
+.delete-btn:hover {
+  background: #dc2626 !important;
+}
+
+/* Alinhamento geral dos formulários */
+.finance-form,
+.toolbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+}
+
+/* Grid 100% alinhado */
+table {
+  width: 100% !important;
+  margin-top: 10px !important;
+}
+
+/* Margens menores entre blocos */
+.page-container > .App > .form-card {
+  margin-bottom: 20px !important;
+}
+
+/* Ajustar ícones de calendário */
+input[type="date"] {
+  min-width: 160px !important;
+}
+
+.dados-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+}
+
+.dados-table th {
+  background: #f3f4f6;
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dados-table td {
+  padding: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.dados-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.toolbar input {
+  width: 350px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+}
+
+/* =============================== */
+/*  AJUSTES DE LARGURA DA TABELA   */
+/* =============================== */
+
+/* A tabela já é responsiva, mas adicionamos larguras melhores */
+.dados-table th,
+.dados-table td {
+  white-space: nowrap;
+  padding: 8px 12px;
+}
+
+/* Colunas mais estreitas */
+.dados-table th:nth-child(1),
+.dados-table td:nth-child(1) { width: 80px; }   /* ID */
+.dados-table th:nth-child(2),
+.dados-table td:nth-child(2) { width: 120px; }  /* Sistel */
+.dados-table th:nth-child(3),
+.dados-table td:nth-child(3) { width: 130px; }  /* Astel */
+.dados-table th:nth-child(4),
+.dados-table td:nth-child(4) { width: 220px; }  /* Nome */
+.dados-table th:nth-child(5),
+.dados-table td:nth-child(5) { width: 150px; }  /* CPF */
+.dados-table th:nth-child(6),
+.dados-table td:nth-child(6) { width: 120px; }  /* RG */
+
+/* ENDEREÇO COM MUITO MAIS ESPAÇO */
+.dados-table th:nth-child(7),
+.dados-table td:nth-child(7) { width: 480px; }  /* Endereço */
+
+/* Estado Civil */
+.dados-table th:nth-child(8),
+.dados-table td:nth-child(8) { width: 140px; }  
+
+/* Situação */
+.dados-table th:nth-child(9),
+.dados-table td:nth-child(9) { width: 140px; }  
+
+/* Telefone */
+.dados-table th:nth-child(10),
+.dados-table td:nth-child(10) { width: 140px; }
+
+/* Nome Esposa */
+.dados-table th:nth-child(11),
+.dados-table td:nth-child(11) { width: 180px; }
+
+/* Valor Benefício */
+.dados-table th:nth-child(12),
+.dados-table td:nth-child(12) { width: 140px; }
+
+/* Ativo */
+.dados-table th:nth-child(13),
+.dados-table td:nth-child(13) { width: 100px; }
+
+/* Desconto Folha */
+.dados-table th:nth-child(14),
+.dados-table td:nth-child(14) { width: 140px; }
+
+/* O container precisa permitir scroll horizontal */
+.form-card {
+  overflow-x: auto !important;
+}
+
+/* A coluna fixa sempre começa na posição 0 */
+.sticky-col {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 5 !important; /* acima das outras células */
+}
+
+/* Estilo para TH */
+.sticky-header {
+  background: #ffffff !important;
+  border-right: 1px solid #e5e7eb !important;
+}
+
+/* Estilo para TD */
+.sticky-cell {
+  background: #ffffff !important;
+  border-right: 1px solid #e5e7eb !important;
+}
+
+/* Importante: definir largura fixa */
+.sticky-col,
+.sticky-header,
+.sticky-cell {
+  min-width: 220px !important;
+  max-width: 220px !important;
+}
+
+/* GRID DO FORMULÁRIO */
+.form-container {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.form-column {
+  flex: 1;
+  min-width: 350px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  background: white;
+}
+
+.checkbox-row {
+  display: flex;
+  gap: 24px;
+  margin: 16px 0;
+}
+
+.form-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 16px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button[type="submit"] {
+  background-color: #2563eb;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+}
+
+button[type="button"] {
+  background-color: #6b7280;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+}
+
+.error-box {
+  background: #fee2e2;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.error-text {
+  color: #b91c1c;
+}
+

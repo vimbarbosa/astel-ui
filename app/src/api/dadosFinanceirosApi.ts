@@ -1,85 +1,91 @@
-import axios from "axios";
+import { http } from "./httpClient";
 
-const http = axios.create({
-  baseURL: "http://localhost:5000/api",
-});
+/* ---------------------------------------------------
+   DTOs
+----------------------------------------------------*/
 
-export interface DadosFinanceiros {
-  matriculaSistel: number;
-  matriculaAstel: number;
+export interface DadosFinanceirosDTO {
+  id: number;
   ano: number;
   mes: number;
   valorPago: number;
+
+  idDadosCadastrais: number;
+  matriculaSistel: number | null;
+  matriculaAstel: number | null;
+
+  nome: string;
+  cpf: string;
+  rg: string;
+  endereco: string;
+  estadoCivil: string;
+  telefone: string;
+  situacao: string;
+  ativo: boolean | null;
+
+  inadimplente: boolean;
 }
 
-export interface PaginatedResponse<T> {
+export interface PaginatedResult<T> {
   data: T[];
   totalCount: number;
   totalPages: number;
-  currentPage: number;
+  page: number;
   pageSize: number;
 }
 
-// 🔹 GET - Registros financeiros paginados
-export async function getPagedDadosFinanceiros(
-  pageNumber = 1,
-  pageSize = 10
-): Promise<PaginatedResponse<DadosFinanceiros>> {
-  const response = await http.get("/DadosFinanceiros", {
-    params: { pageNumber, pageSize },
-  });
+/* ---------------------------------------------------
+   GET FILTRAR
+----------------------------------------------------*/
 
-  // Axios normaliza headers para lowercase
-  const headers = response.headers;
-
-  const totalCount = Number(headers["x-total-count"] ?? headers["X-Total-Count"] ?? 0);
-  const totalPages = Number(headers["x-total-pages"] ?? headers["X-Total-Pages"] ?? 1);
-  const currentPage = Number(headers["x-current-page"] ?? headers["X-Current-Page"] ?? pageNumber);
-  const size = Number(headers["x-page-size"] ?? headers["X-Page-Size"] ?? pageSize);
+export async function filtrarFinanceiro(params: {
+  dataInicio?: string;
+  dataFim?: string;
+  nome?: string;
+  cpf?: string;
+  matriculaAstel?: number;
+  inadimplente?: boolean;
+  pageNumber?: number;
+  pageSize?: number;
+}): Promise<PaginatedResult<DadosFinanceirosDTO>> {
+  const response = await http.get("/DadosFinanceiros/filtrar", { params });
 
   return {
     data: response.data,
-    totalCount,
-    totalPages,
-    currentPage,
-    pageSize: size,
+    totalCount: Number(response.headers["x-total-count"] ?? 0),
+    totalPages: Number(response.headers["x-total-pages"] ?? 1),
+    page: Number(response.headers["x-page-number"] ?? 1),
+    pageSize: Number(response.headers["x-page-size"] ?? 10),
   };
 }
 
+/* ---------------------------------------------------
+   CRUD
+----------------------------------------------------*/
 
-// 🔹 POST - Criar registro financeiro (com tratamento de erro padronizado)
-export async function createDadosFinanceiros(
-  payload: DadosFinanceiros
-): Promise<DadosFinanceiros> {
-  try {
-    const { data } = await http.post("/DadosFinanceiros", payload);
-    return data;
-  } catch (err: any) {
-    if (err.response?.data?.errors) {
-      const msg = Object.values(err.response.data.errors).flat().join("\n");
-      throw new Error(msg);
-    }
-    throw new Error("Erro ao criar registro financeiro.");
-  }
+export async function deleteDadosFinanceiros(id: number) {
+  await http.delete(`/DadosFinanceiros/${id}`);
 }
 
-// 🔹 DELETE - Excluir registro financeiro
-export async function deleteDadosFinanceiros(
-  matriculaSistel: number,
-  matriculaAstel: number,
-  ano: number,
-  mes: number
-): Promise<void> {
-  await http.delete(
-    `/DadosFinanceiros/${matriculaSistel}/${matriculaAstel}/${ano}/${mes}`
-  );
+export async function createDadosFinanceiros(payload: {
+  idDadosCadastrais: number;
+  ano: number;
+  mes: number;
+  valorPago: number;
+}) {
+  return await http.post("/DadosFinanceiros", payload);
 }
 
-// 🔹 IMPORT - Importar planilha financeira
-export async function importDadosFinanceiros(file: File): Promise<void> {
-  const formData = new FormData();
-  formData.append("file", file);
-  await http.post("/Import/importFinanceiro", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+/* ---------------------------------------------------
+   BUSCA CADASTRO POR MATRÍCULA ASTEL
+----------------------------------------------------*/
+
+export async function getCadastroPorMatriculaAstel(
+  matriculaAstel: number
+): Promise<any | null> {
+  const response = await http.get("/DadosCadastrais", {
+    params: { matriculaAstel },
   });
+
+  return response.data.length > 0 ? response.data[0] : null;
 }

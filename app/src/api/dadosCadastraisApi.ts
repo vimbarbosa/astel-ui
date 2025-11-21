@@ -14,7 +14,7 @@ function cleanPayload(payload: User): User {
     nomeEsposa: payload.nomeEsposa?.trim() || "",
     cpf: payload.cpf?.trim() || "",
     rg: payload.rg?.trim() || "",
-    situacao: payload.situacao ? Number(payload.situacao) : null,
+    situacao: payload.situacao ? String(payload.situacao) : null,
     valorBeneficio: payload.valorBeneficio ? Number(payload.valorBeneficio) : null,
   };
 }
@@ -57,10 +57,10 @@ export async function createDadosCadastrais(payload: User): Promise<User> {
 /**
  * Atualiza registro existente
  */
-export async function updateDadosCadastrais(matriculaSistel: number, payload: User): Promise<void> {
+export async function updateDadosCadastrais(id: number, payload: User) {
   const cleaned = cleanPayload(payload);
 
-  const res = await fetch(`http://localhost:5000/api/DadosCadastrais/${matriculaSistel}`, {
+  const res = await fetch(`http://localhost:5000/api/DadosCadastrais/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cleaned),
@@ -68,6 +68,7 @@ export async function updateDadosCadastrais(matriculaSistel: number, payload: Us
 
   if (!res.ok) await handleValidationErrors(res);
 }
+
 
 /**
  * Outras operações (mantidas)
@@ -77,13 +78,13 @@ export async function getAllDadosCadastrais(): Promise<User[]> {
   return data;
 }
 
-export async function getDadosCadastraisById(matriculaSistel: number): Promise<User> {
-  const { data } = await http.get<User>(`/DadosCadastrais/${matriculaSistel}`);
+export async function getDadosCadastraisById(id: number): Promise<User> {
+  const { data } = await http.get<User>(`/DadosCadastrais/${id}`);
   return data;
 }
 
-export async function deleteDadosCadastrais(matriculaSistel: number): Promise<void> {
-  await http.delete(`/DadosCadastrais/${matriculaSistel}`);
+export async function deleteDadosCadastrais(id: number): Promise<void> {
+  await http.delete(`/DadosCadastrais/${id}`);
 }
 
 export async function importDadosCadastrais(file: File): Promise<void> {
@@ -92,4 +93,33 @@ export async function importDadosCadastrais(file: File): Promise<void> {
   await http.post("/Import/import", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+}
+
+// 🔎 Novo método — Filtro paginado para Dados Cadastrais
+export async function filtrarDadosCadastrais(params: {
+  nome?: string;
+  cpf?: string;
+  matriculaAstel?: number;
+  pageNumber?: number;
+  pageSize?: number;
+}) {
+  const query = new URLSearchParams();
+
+  if (params.nome) query.append("nome", params.nome);
+  if (params.cpf) query.append("cpf", params.cpf);
+  if (params.matriculaAstel)
+    query.append("matriculaAstel", params.matriculaAstel.toString());
+
+  query.append("pageNumber", params.pageNumber?.toString() ?? "1");
+  query.append("pageSize", params.pageSize?.toString() ?? "10");
+
+  const response = await http.get(`/DadosCadastrais?${query.toString()}`);
+
+  return {
+    data: response.data,
+    totalCount: Number(response.headers["x-total-count"] ?? 0),
+    totalPages: Number(response.headers["x-total-pages"] ?? 1),
+    currentPage: Number(response.headers["x-current-page"] ?? 1),
+    pageSize: Number(response.headers["x-page-size"] ?? 10),
+  };
 }

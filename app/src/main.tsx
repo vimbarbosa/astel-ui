@@ -100,12 +100,18 @@ function ProtectedApp() {
           <Route path="/" element={<UsersPage />} />
           <Route path="/financeiro" element={<FinancialListPage />} />
           <Route path="/novo" element={<CreateOrEditUserPage />} />
+
+          {/* 👉 ROTA FALTANTE - AGORA FUNCIONA */}
+          <Route path="/editar/:id" element={<CreateOrEditUserPage />} />
+
+          {/* fallback */}
           <Route path="*" element={<h2>Página não encontrada 😢</h2>} />
         </Routes>
       </div>
     </BrowserRouter>
   );
 }
+
 
 // 🚀 Raiz com controle de login
 function Root() {

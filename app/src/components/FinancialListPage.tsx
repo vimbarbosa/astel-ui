@@ -1,227 +1,271 @@
-import { useEffect, useState, useMemo } from "react";
-import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
-  getPagedDadosFinanceiros,
-  createDadosFinanceiros,
+  filtrarFinanceiro,
   deleteDadosFinanceiros,
-  importDadosFinanceiros,
-  type DadosFinanceiros,
+  createDadosFinanceiros,
+  getCadastroPorMatriculaAstel,
+  type DadosFinanceirosDTO,
 } from "../api/dadosFinanceirosApi";
 
 export default function FinancialListPage() {
-  const [records, setRecords] = useState<DadosFinanceiros[]>([]);
+  const [records, setRecords] = useState<DadosFinanceirosDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [validationError, setValidationError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  const [newRecord, setNewRecord] = useState<DadosFinanceiros>({
-    matriculaSistel: 0,
-    matriculaAstel: 0,
-    ano: new Date().getFullYear(),
-    mes: 1,
-    valorPago: 0,
-  });
+  // Filtros
+  const [nome, setNome] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [matriculaAstel, setMatriculaAstel] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+  const [inadimplente, setInadimplente] = useState<string>("");
 
-  async function fetchData() {
+  // Inserção
+  const [anoInsert, setAnoInsert] = useState<number>(0);
+  const [mesInsert, setMesInsert] = useState<number>(0);
+  const [valorInsert, setValorInsert] = useState<number>(0);
+
+  async function fetch() {
     setLoading(true);
-    try {
-      const result = await getPagedDadosFinanceiros(page, pageSize);
-      setRecords(result.data);
-      setTotalPages(result.totalPages);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+
+    const result = await filtrarFinanceiro({
+      nome: nome || undefined,
+      cpf: cpf || undefined,
+      matriculaAstel: matriculaAstel ? Number(matriculaAstel) : undefined,
+      dataInicio: dataInicio || undefined,
+      dataFim: dataFim || undefined,
+      inadimplente:
+        inadimplente === "" ? undefined : inadimplente === "true",
+      pageNumber: page,
+      pageSize,
+    });
+
+    setRecords(result.data);
+    setTotalPages(result.totalPages);
+    setLoading(false);
   }
 
   useEffect(() => {
-    fetchData();
+    fetch();
   }, [page]);
 
-  function validateForm(): string | null {
-    if (!newRecord.matriculaSistel || newRecord.matriculaSistel <= 0)
-      return "O campo Matrícula Sistel é obrigatório e deve ser maior que zero.";
-    if (!newRecord.matriculaAstel || newRecord.matriculaAstel <= 0)
-      return "O campo Matrícula Astel é obrigatório e deve ser maior que zero.";
-    if (!newRecord.ano || newRecord.ano < 1900) return "Informe um ano válido.";
-    if (!newRecord.mes || newRecord.mes < 1 || newRecord.mes > 12)
-      return "O campo Mês deve estar entre 1 e 12.";
-    if (newRecord.valorPago <= 0)
-      return "O campo Valor Pago é obrigatório e deve ser maior que zero.";
-    return null;
+  // -------------------------------
+  //      ADICIONAR PAGAMENTO
+  // -------------------------------
+  async function handleAddPayment() {
+    try {
+      if (!matriculaAstel) {
+        alert("Informe a matrícula ASTEL.");
+        return;
+      }
+
+      const cadastro = await getCadastroPorMatriculaAstel(
+        Number(matriculaAstel)
+      );
+
+      if (!cadastro) {
+        alert("Nenhum cadastro encontrado para esta matrícula ASTEL.");
+        return;
+      }
+
+      await createDadosFinanceiros({
+        idDadosCadastrais: cadastro.id,
+        ano: anoInsert,
+        mes: mesInsert,
+        valorPago: valorInsert,
+      });
+
+      alert("Pagamento adicionado com sucesso!");
+      fetch();
+    } catch (error: any) {
+      // ERRO AMIGÁVEL
+      if (error?.response?.status === 409) {
+        alert(error.response.data.message);
+        return;
+      }
+
+      alert("Erro ao cadastrar pagamento.");
+      console.error(error);
+    }
   }
 
-  async function handleAdd() {
-    const validationMsg = validateForm();
-    if (validationMsg) {
-      setValidationError(validationMsg);
-      return;
-    }
-
-    setValidationError(null);
-    try {
-      await createDadosFinanceiros(newRecord);
-      alert("Registro criado com sucesso!");
-      fetchData();
-    } catch (err: any) {
-      setValidationError(err.message);
-    }
-  }
-
-  async function handleDelete(
-    matriculaSistel: number,
-    matriculaAstel: number,
-    ano: number,
-    mes: number
-  ) {
-    if (!confirm(`Excluir o registro de ${ano}/${mes}?`)) return;
+  // -------------------------------
+  //      EXCLUIR REGISTRO
+  // -------------------------------
+  async function handleDelete(id: number) {
+    if (!confirm("Excluir este registro?")) return;
 
     try {
-      await deleteDadosFinanceiros(matriculaSistel, matriculaAstel, ano, mes);
-      fetchData();
-    } catch {
+      await deleteDadosFinanceiros(id);
+      fetch();
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        alert("Registro não encontrado ou já removido.");
+        return;
+      }
+
       alert("Erro ao excluir registro.");
+      console.error(error);
     }
   }
 
-  // 🔹 Importação
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await importDadosFinanceiros(file);
-      alert("Importação concluída com sucesso!");
-      fetchData();
-    } catch (err: any) {
-      alert("Erro ao importar: " + err.message);
-    }
-  }
-
-  // 🔹 Exportação
-  function handleExport() {
-    try {
-      const csv = [
-        ["Matrícula Sistel", "Matrícula Astel", "Ano", "Mês", "Valor Pago (R$)"],
-        ...records.map((r) => [
-          r.matriculaSistel,
-          r.matriculaAstel,
-          r.ano,
-          r.mes,
-          r.valorPago.toFixed(2),
-        ]),
-      ]
-        .map((row) => row.join(";"))
-        .join("\n");
-
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "dados_financeiros.csv";
-      link.click();
-    } catch {
-      alert("Erro ao exportar registros.");
-    }
-  }
-
-  const filtered = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    if (!term) return records;
-    return records.filter(
-      (r) =>
-        r.matriculaSistel.toString().includes(term) ||
-        r.matriculaAstel.toString().includes(term) ||
-        r.ano.toString().includes(term) ||
-        (r.mes?.toString() ?? "").includes(term)
-    );
-  }, [records, search]);
-
-  if (loading) return <p>Carregando dados financeiros...</p>;
-  if (error) return <p style={{ color: "red" }}>Erro: {error}</p>;
+  if (loading) return <p>Carregando...</p>;
 
   return (
-    <div className="App">
-      <h1>📊 Dados Financeiros</h1>
+    <div className="page-container">
+      <div className="App">
 
-      {validationError && (
-        <div className="error-box">
-          {validationError.split("\n").map((msg, i) => (
-            <p key={i}>⚠️ {msg}</p>
-          ))}
+        {/* ADICIONAR PAGAMENTO */}
+        <div className="form-card" style={{ marginBottom: "20px", maxWidth: "1100px" }}>
+          <h2>Adicionar Pagamento</h2>
+
+          <div className="finance-form">
+            <input
+              type="text"
+              placeholder="Matrícula ASTEL"
+              value={matriculaAstel}
+              onChange={(e) => setMatriculaAstel(e.target.value)}
+            />
+
+            <input
+              type="number"
+              placeholder="Ano"
+              onChange={(e) => setAnoInsert(Number(e.target.value))}
+            />
+
+            <input
+              type="number"
+              placeholder="Mês"
+              onChange={(e) => setMesInsert(Number(e.target.value))}
+            />
+
+            <input
+              type="number"
+              placeholder="Valor Pago"
+              step="0.01"
+              onChange={(e) => setValorInsert(Number(e.target.value))}
+            />
+
+            <button className="import-btn" onClick={handleAddPayment}>
+              Adicionar
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* 🔹 Toolbar */}
-      <div className="toolbar">
-        <input
-          type="text"
-          placeholder="🔍 Buscar por matrícula, ano ou mês..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        {/* FILTROS */}
+        <div className="form-card" style={{ marginBottom: "20px", maxWidth: "1100px" }}>
+          <h2>Filtros</h2>
 
-        <button onClick={() => setPage(1)}>🔄 Atualizar</button>
+          <div className="finance-form">
+            <input
+              type="text"
+              placeholder="Nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+            />
 
-        <label className="import-btn">
-          📁 Importar
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            style={{ display: "none" }}
-            onChange={handleImport}
-          />
-        </label>
+            <input
+              type="text"
+              placeholder="CPF"
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+            />
 
-        <button className="export-btn" onClick={handleExport}>
-          ⬇️ Exportar
-        </button>
-      </div>
+            <input
+              type="text"
+              placeholder="Matrícula ASTEL"
+              value={matriculaAstel}
+              onChange={(e) => setMatriculaAstel(e.target.value)}
+            />
 
-      {/* 🔹 Tabela */}
-      {filtered.length === 0 ? (
-        <p>Nenhum registro encontrado.</p>
-      ) : (
-        <>
-          <table className="finance-table">
+            <input
+              type="date"
+              value={dataInicio}
+              onChange={(e) => setDataInicio(e.target.value)}
+            />
+
+            <input
+              type="date"
+              value={dataFim}
+              onChange={(e) => setDataFim(e.target.value)}
+            />
+
+            <select
+              value={inadimplente}
+              onChange={(e) => setInadimplente(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="true">Inadimplente</option>
+              <option value="false">Adimplente</option>
+            </select>
+
+            <button onClick={fetch}>Buscar</button>
+          </div>
+        </div>
+
+        {/* GRID COMPLETA */}
+        <div className="form-card" style={{ maxWidth: "1100px", overflowX: "auto" }}>
+          <h2>Resultados</h2>
+
+          <table className="dados-table">
             <thead>
               <tr>
+                <th>ID</th>
+                <th>ID Dados Cadastrais</th>
                 <th>Matrícula Sistel</th>
                 <th>Matrícula Astel</th>
+
+                <th className="sticky-col sticky-header">Nome</th>
+                <th>CPF</th>
+                <th>RG</th>
+
+                <th>Endereço</th>
+                <th>Estado Civil</th>
+                <th>Situação</th>
+                <th>Telefone</th>
+                <th>Ativo</th>
+
                 <th>Ano</th>
                 <th>Mês</th>
-                <th>Valor Pago (R$)</th>
+                <th>Valor Pago</th>
+
+                <th>Inadimplente?</th>
                 <th>Ações</th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.map((r) => (
-                <tr
-                  key={`${r.matriculaSistel}-${r.matriculaAstel}-${r.ano}-${r.mes}`}
-                >
+              {records.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.id}</td>
+                  <td>{r.idDadosCadastrais}</td>
                   <td>{r.matriculaSistel}</td>
                   <td>{r.matriculaAstel}</td>
+
+                  <td className="sticky-col sticky-cell">{r.nome}</td>
+                  <td>{r.cpf}</td>
+                  <td>{r.rg}</td>
+
+                  <td>{r.endereco}</td>
+                  <td>{r.estadoCivil}</td>
+                  <td>{r.situacao}</td>
+                  <td>{r.telefone}</td>
+                  <td>{r.ativo ? "Sim" : "Não"}</td>
+
                   <td>{r.ano}</td>
                   <td>{r.mes}</td>
                   <td>{r.valorPago?.toFixed(2)}</td>
+
+                  <td style={{ color: r.inadimplente ? "red" : "green" }}>
+                    {r.inadimplente ? "Sim" : "Não"}
+                  </td>
+
                   <td>
-                    <button
-                      className="delete-btn"
-                      onClick={() =>
-                        handleDelete(
-                          r.matriculaSistel,
-                          r.matriculaAstel,
-                          r.ano,
-                          r.mes
-                        )
-                      }
-                    >
-                      🗑️ Excluir
+                    <button className="delete-btn" onClick={() => handleDelete(r.id)}>
+                      Excluir
                     </button>
                   </td>
                 </tr>
@@ -229,25 +273,23 @@ export default function FinancialListPage() {
             </tbody>
           </table>
 
-          {/* 🔹 Paginação */}
-          <div className="pagination">
+          {/* PAGINAÇÃO */}
+          <div className="pagination" style={{ marginTop: "20px" }}>
             <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              ◀ Página anterior
+              ◀ Anterior
             </button>
+
             <span>
               Página {page} de {totalPages}
             </span>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Próxima página ▶
+
+            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              Próxima ▶
             </button>
           </div>
-        </>
-      )}
+        </div>
 
-      <Outlet />
+      </div>
     </div>
   );
 }

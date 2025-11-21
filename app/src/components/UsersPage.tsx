@@ -1,138 +1,203 @@
 import { useEffect, useState } from "react";
-import { getAllDadosCadastrais, getDadosCadastraisById } from "../api/dadosCadastraisApi";
+import { filtrarDadosCadastrais, deleteDadosCadastrais } from "../api/dadosCadastraisApi";
 import type { User } from "../types/User";
+import { useNavigate } from "react-router-dom";
 
 export function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [search, setSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [records, setRecords] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // filtros
+  const [nome, setNome] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [matriculaAstel, setMatriculaAstel] = useState("");
+
+  // paginação
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const navigate = useNavigate();
+
+  async function fetch() {
+    setLoading(true);
+
+    const res = await filtrarDadosCadastrais({
+      nome: nome || undefined,
+      cpf: cpf || undefined,
+      matriculaAstel: matriculaAstel ? Number(matriculaAstel) : undefined,
+      pageNumber: page,
+      pageSize,
+    });
+
+    setRecords(res.data);
+    setTotalPages(res.totalPages);
+    setLoading(false);
+  }
 
   useEffect(() => {
-    getAllDadosCadastrais().then(setUsers);
-  }, []);
+    fetch();
+  }, [page]);
 
-  const filtered = users.filter((u) => {
-    const t = search.toLowerCase().trim();
-    if (!t) return true;
-    return (
-      String(u.matriculaSistel).includes(t) ||
-      (u.nome ?? "").toLowerCase().includes(t) ||
-      (u.cpf ?? "").toLowerCase().includes(t)
-    );
-  });
+  function resetAndFetch() {
+    setPage(1);
+    fetch();
+  }
 
-  async function openDetails(matriculaSistel: number) {
-    const user = await getDadosCadastraisById(matriculaSistel);
-    setSelectedUser(user);
-    setShowModal(true);
+  async function handleDelete(matriculaSistel: number) {
+    if (!confirm("Deseja realmente excluir este registro?")) return;
+
+    await deleteDadosCadastrais(matriculaSistel);
+    fetch();
+  }
+
+  function handleEdit(id: number) {
+    navigate(`/editar/${id}`);
   }
 
   return (
     <div className="App">
       <h1>👤 Dados Cadastrais</h1>
 
-      <div className="toolbar">
-        <input
-          type="text"
-          placeholder="🔍 Buscar por nome, CPF ou matrícula..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* FILTROS */}
+      <div className="form-card" style={{ maxWidth: "1100px", marginBottom: "20px" }}>
+        <h2>Filtros</h2>
 
-        <button
-          className="import-btn"
-          style={{ background: "#10b981" }}
-          onClick={async () => {
-            try {
-              const res = await fetch("http://localhost:5000/api/DadosFinanceiros/export-cadastrais");
-              if (!res.ok) throw new Error("Erro ao exportar dados cadastrais.");
-              const blob = await res.blob();
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "dados_cadastrais.csv";
-              a.click();
-              a.remove();
-            } catch (err) {
-              console.error(err);
-              alert("Falha ao exportar planilha.");
-            }
-          }}
-        >
-          ⬇️ Exportar Planilha
-        </button>
+        <div className="finance-form">
+
+          <input
+            type="text"
+            placeholder="Nome"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+          />
+
+          <input
+            type="text"
+            placeholder="CPF"
+            value={cpf}
+            onChange={(e) => setCpf(e.target.value)}
+          />
+
+          <input
+            type="text"
+            placeholder="Matrícula ASTEL"
+            value={matriculaAstel}
+            onChange={(e) => setMatriculaAstel(e.target.value)}
+          />
+
+          <button onClick={resetAndFetch}>Buscar</button>
+        </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <p>Nenhum registro encontrado.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Matrícula Sistel</th>
-              <th>Nome</th>
-              <th>CPF</th>
-              <th>Telefone</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((u) => (
-              <tr key={u.matriculaSistel}>
-                <td>{u.matriculaSistel}</td>
-                <td>{u.nome ?? "-"}</td>
-                <td>{u.cpf ?? "-"}</td>
-                <td>{u.telefone ?? "-"}</td>
-                <td>
-                  <button
-                    style={{
-                      background: "#3b82f6",
-                      color: "white",
-                      border: "none",
-                      padding: "5px 10px",
-                      borderRadius: "5px",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => openDetails(u.matriculaSistel)}
-                  >
-                    🔍 Ver detalhes
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {/* GRID */}
+      <div className="form-card" style={{ maxWidth: "1100px", overflowX: "auto" }}>
+        <h2>Resultados</h2>
 
-      {/* MODAL DE DETALHES */}
-      {showModal && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>📋 Detalhes do Usuário</h2>
-            <table className="details-table">
+        {loading ? (
+          <p>Carregando...</p>
+        ) : records.length === 0 ? (
+          <p>Nenhum registro encontrado.</p>
+        ) : (
+          <>
+            <table className="dados-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Matrícula Sistel</th>
+                  <th>Matrícula Astel</th>
+                  <th className="sticky-col sticky-header">Nome</th>
+                  <th>CPF</th>
+                  <th>RG</th>
+                  <th>Endereço</th>
+                  <th>Estado Civil</th>
+                  <th>Situação</th>
+                  <th>Telefone</th>
+                  <th>Nome Esposa</th>
+                  <th>Valor Benefício</th>
+                  <th>Ativo</th>
+                  <th>Desconto Folha</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+
               <tbody>
-                <tr><th>Matrícula Sistel:</th><td>{selectedUser.matriculaSistel}</td></tr>
-                <tr><th>Matrícula Astel:</th><td>{selectedUser.matriculaAstel}</td></tr>
-                <tr><th>Nome:</th><td>{selectedUser.nome}</td></tr>
-                <tr><th>Endereço:</th><td>{selectedUser.endereco ?? "-"}</td></tr>
-                <tr><th>Situação:</th><td>{selectedUser.situacao ?? "-"}</td></tr>
-                <tr><th>Valor Benefício:</th><td>{selectedUser.valorBeneficio ?? "-"}</td></tr>
-                <tr><th>Estado Civil:</th><td>{selectedUser.estadoCivil ?? "-"}</td></tr>
-                <tr><th>Telefone:</th><td>{selectedUser.telefone ?? "-"}</td></tr>
-                <tr><th>Nome da Esposa:</th><td>{selectedUser.nomeEsposa ?? "-"}</td></tr>
-                <tr><th>CPF:</th><td>{selectedUser.cpf ?? "-"}</td></tr>
-                <tr><th>RG:</th><td>{selectedUser.rg ?? "-"}</td></tr>
-                <tr><th>Ativo:</th><td>{selectedUser.ativo ? "Sim" : "Não"}</td></tr>
-                <tr><th>Desconto em Folha:</th><td>{selectedUser.descontoFolha ? "Sim" : "Não"}</td></tr>
+                {records.map((u) => (
+                  <tr key={u.id}>
+                    <td>{u.id}</td>
+                    <td>{u.matriculaSistel}</td>
+                    <td>{u.matriculaAstel}</td>
+                    <td className="sticky-col sticky-cell">{u.nome}</td>
+                    <td>{u.cpf}</td>
+                    <td>{u.rg}</td>
+                    <td>{u.endereco}</td>
+                    <td>{u.estadoCivil}</td>
+                    <td>{u.situacao}</td>
+                    <td>{u.telefone}</td>
+                    <td>{u.nomeEsposa}</td>
+                    <td>{u.valorBeneficio}</td>
+                    <td>{u.ativo ? "Sim" : "Não"}</td>
+                    <td>{u.descontoFolha ? "Sim" : "Não"}</td>
+
+                    <td>
+                      <button
+                        style={{
+                          background: "#3b82f6",
+                          color: "white",
+                          border: "none",
+                          padding: "4px 8px",
+                          marginRight: "6px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => handleEdit(u.id)}
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        style={{
+                          background: "#ef4444",
+                          color: "white",
+                          border: "none",
+                          padding: "4px 8px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => handleDelete(u.id)}
+                      >
+                        Excluir
+                      </button>
+                    </td>
+
+                  </tr>
+                ))}
               </tbody>
             </table>
-            <div className="modal-actions">
-              <button onClick={() => setShowModal(false)}>Fechar</button>
+
+            {/* PAGINAÇÃO */}
+            <div
+              className="pagination"
+              style={{
+                marginTop: "20px",
+                display: "flex",
+                justifyContent: "center",
+                gap: "10px",
+              }}
+            >
+              <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                ◀ Anterior
+              </button>
+
+              <span>Página {page} de {totalPages}</span>
+
+              <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                Próxima ▶
+              </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
