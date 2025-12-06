@@ -82,9 +82,14 @@ export async function deleteDadosFinanceiros(id: number) {
 /**
  * Buscar cadastro pelo número ASTEL
  */
-export async function getCadastroPorMatriculaAstel(matriculaAstel: number) {
-  const { data } = await http.get(`/DadosCadastrais/buscaPorMatricula/${matriculaAstel}`);
-  return data;
+export async function getCadastroPorMatriculaAstel(
+  matriculaAstel: number
+): Promise<any | null> {
+  const response = await http.get("/DadosCadastrais", {
+    params: { matriculaAstel },
+  });
+
+  return response.data.length > 0 ? response.data[0] : null;
 }
 
 /**
