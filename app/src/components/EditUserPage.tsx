@@ -28,6 +28,18 @@ export function EditUserPage() {
     rg: "",
     ativo: false,
     descontoFolha: false,
+
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cep: "",
+    cidade: "",
+    estado: "",
+    tipoEndereco: "",
+    correspondencia: "",
+    celSkype: "",
+    email: "",
   });
 
   async function loadData() {
@@ -41,15 +53,19 @@ export function EditUserPage() {
     loadData();
   }, [matricula]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
     const { name, value } = e.target;
 
     setForm((prev) => ({
       ...prev,
       [name]:
-        value === "true" ? true :
-        value === "false" ? false :
-        value
+        value === "true"
+          ? true
+          : value === "false"
+          ? false
+          : value,
     }));
   }
 
@@ -57,10 +73,10 @@ export function EditUserPage() {
     e.preventDefault();
     setSaving(true);
 
-    await updateDadosCadastrais(form.matriculaSistel, form);
+    await updateDadosCadastrais(form.id, form);
 
     setSaving(false);
-    navigate("/usuarios"); // ou a rota da sua lista
+    navigate("/");
   }
 
   return (
@@ -70,153 +86,294 @@ export function EditUserPage() {
       {loading ? (
         <p>Carregando...</p>
       ) : (
-        <form onSubmit={handleSubmit} className="form-card" style={{ maxWidth: "900px" }}>
+        <form onSubmit={handleSubmit} className="form-card" style={{ maxWidth: "980px" }}>
           <h2>Informações do Usuário</h2>
 
-          <div className="finance-form">
+          <div className="form-grid-2col">
 
-            <input
-              type="text"
-              name="matriculaSistel"
-              value={form.matriculaSistel}
-              onChange={handleChange}
-              placeholder="Matrícula Sistel"
-            />
+            {/* =======================
+                COLUNA 1
+            ======================== */}
 
-            <input
-              type="text"
-              name="matriculaAstel"
-              value={form.matriculaAstel}
-              onChange={handleChange}
-              placeholder="Matrícula Astel"
-            />
+            <div className="form-group">
+              <label>Matrícula Sistel</label>
+              <input
+                type="number"
+                name="matriculaSistel"
+                value={form.matriculaSistel}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="text"
-              name="nome"
-              value={form.nome}
-              onChange={handleChange}
-              placeholder="Nome"
-            />
+            <div className="form-group">
+              <label>Matrícula Astel</label>
+              <input
+                type="number"
+                name="matriculaAstel"
+                value={form.matriculaAstel}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="text"
-              name="cpf"
-              value={form.cpf}
-              onChange={handleChange}
-              placeholder="CPF"
-            />
+            <div className="form-group">
+              <label>Nome</label>
+              <input
+                type="text"
+                name="nome"
+                value={form.nome}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="text"
-              name="rg"
-              value={form.rg}
-              onChange={handleChange}
-              placeholder="RG"
-            />
+            <div className="form-group">
+              <label>Endereço</label>
+              <input
+                type="text"
+                name="endereco"
+                value={form.endereco ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="text"
-              name="telefone"
-              value={form.telefone}
-              onChange={handleChange}
-              placeholder="Telefone"
-            />
+            <div className="form-group">
+              <label>Logradouro</label>
+              <input
+                type="text"
+                name="logradouro"
+                value={form.logradouro ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="text"
-              name="endereco"
-              value={form.endereco}
-              onChange={handleChange}
-              placeholder="Endereço"
-            />
+            <div className="form-group">
+              <label>Número</label>
+              <input
+                type="text"
+                name="numero"
+                value={form.numero ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="text"
-              name="estadoCivil"
-              value={form.estadoCivil}
-              onChange={handleChange}
-              placeholder="Estado Civil"
-            />
+            <div className="form-group">
+              <label>Complemento</label>
+              <input
+                type="text"
+                name="complemento"
+                value={form.complemento ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="text"
-              name="nomeEsposa"
-              value={form.nomeEsposa ?? ""}
-              onChange={handleChange}
-              placeholder="Nome da Esposa"
-            />
+            <div className="form-group">
+              <label>Bairro</label>
+              <input
+                type="text"
+                name="bairro"
+                value={form.bairro ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <input
-              type="number"
-              name="valorBeneficio"
-              value={form.valorBeneficio}
-              onChange={handleChange}
-              placeholder="Valor Benefício"
-            />
+            <div className="form-group">
+              <label>CEP</label>
+              <input
+                type="text"
+                name="cep"
+                value={form.cep ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <select
-              name="situacao"
-              value={form.situacao}
-              onChange={handleChange}
-            >
-              <option value="">Situação</option>
-              <option value="ATIVO">Ativo</option>
-              <option value="FALECIDO">Falecido</option>
-              <option value="DESATIVADO">Desativado</option>
-            </select>
+            {/* =======================
+                COLUNA 2
+            ======================== */}
 
-            <select
-              name="ativo"
-              value={form.ativo ? "true" : "false"}
-              onChange={handleChange}
-            >
-              <option value="true">Ativo: Sim</option>
-              <option value="false">Ativo: Não</option>
-            </select>
+            <div className="form-group">
+              <label>Cidade</label>
+              <input
+                type="text"
+                name="cidade"
+                value={form.cidade ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <select
-              name="descontoFolha"
-              value={form.descontoFolha ? "true" : "false"}
-              onChange={handleChange}
-            >
-              <option value="true">Desconto Folha: Sim</option>
-              <option value="false">Desconto Folha: Não</option>
-            </select>
+            <div className="form-group">
+              <label>Estado</label>
+              <input
+                type="text"
+                name="estado"
+                value={form.estado ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                background: "#22c55e",
-                color: "white",
-                border: "none",
-                padding: "8px 12px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                marginTop: "15px",
-              }}
-            >
-              {saving ? "Salvando..." : "Salvar Alterações"}
-            </button>
+            <div className="form-group">
+              <label>Tipo Endereço</label>
+              <input
+                type="text"
+                name="tipoEndereco"
+                value={form.tipoEndereco ?? ""}
+                onChange={handleChange}
+              />
+            </div>
 
-            <button
-              type="button"
-              onClick={() => navigate("/usuarios")}
-              style={{
-                background: "#6b7280",
-                color: "white",
-                border: "none",
-                padding: "8px 12px",
-                borderRadius: "6px",
-                cursor: "pointer",
-                marginTop: "15px",
-              }}
-            >
-              Voltar
-            </button>
+            <div className="form-group">
+              <label>Correspondência</label>
+              <input
+                type="text"
+                name="correspondencia"
+                value={form.correspondencia ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Cel/Skype</label>
+              <input
+                type="text"
+                name="celSkype"
+                value={form.celSkype ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="text"
+                name="email"
+                value={form.email ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Estado Civil</label>
+              <input
+                type="text"
+                name="estadoCivil"
+                value={form.estadoCivil ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Telefone</label>
+              <input
+                type="text"
+                name="telefone"
+                value={form.telefone ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Nome da Esposa</label>
+              <input
+                type="text"
+                name="nomeEsposa"
+                value={form.nomeEsposa ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>CPF</label>
+              <input
+                type="text"
+                name="cpf"
+                value={form.cpf ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>RG</label>
+              <input
+                type="text"
+                name="rg"
+                value={form.rg ?? ""}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Situação</label>
+              <select
+                name="situacao"
+                value={form.situacao ?? ""}
+                onChange={handleChange}
+              >
+                <option value="">Selecione</option>
+                <option value="BENEFICIÁRIO">Beneficiário</option>
+                <option value="PENSIONISTA">Pensionista</option>
+                <option value="ATIVO">Ativo</option>
+                <option value="INADIMPLENTE">Inadimplente</option>
+                <option value="FALECIDO">Falecido</option>
+                <option value="TITULAR">Titular</option>
+                <option value="INATIVO">Inativo</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Valor Benefício</label>
+              <input
+                type="number"
+                step="0.01"
+                name="valorBeneficio"
+                value={form.valorBeneficio ?? 0}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="checkbox-row">
+              <label>
+                <input
+                  type="checkbox"
+                  name="ativo"
+                  checked={form.ativo ?? false}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, ativo: e.target.checked }))
+                  }
+                />
+                Ativo
+              </label>
+
+              <label>
+                <input
+                  type="checkbox"
+                  name="descontoFolha"
+                  checked={form.descontoFolha ?? false}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, descontoFolha: e.target.checked }))
+                  }
+                />
+                Desconto Folha
+              </label>
+            </div>
 
           </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="btn-primary"
+            style={{ marginTop: "20px" }}
+          >
+            {saving ? "Salvando..." : "Salvar Alterações"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="btn-secondary"
+            style={{ marginTop: "20px" }}
+          >
+            Voltar
+          </button>
+
         </form>
       )}
     </div>

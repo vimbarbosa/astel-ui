@@ -44,10 +44,9 @@ export function UsersPage() {
     fetch();
   }
 
-  async function handleDelete(matriculaSistel: number) {
+  async function handleDelete(id: number) {
     if (!confirm("Deseja realmente excluir este registro?")) return;
-
-    await deleteDadosCadastrais(matriculaSistel);
+    await deleteDadosCadastrais(id);
     fetch();
   }
 
@@ -64,7 +63,6 @@ export function UsersPage() {
         <h2>Filtros</h2>
 
         <div className="finance-form">
-
           <input
             type="text"
             placeholder="Nome"
@@ -91,7 +89,7 @@ export function UsersPage() {
       </div>
 
       {/* GRID */}
-      <div className="form-card" style={{ maxWidth: "1100px", overflowX: "auto" }}>
+      <div className="form-card" style={{ maxWidth: "1400px", overflowX: "auto" }}>
         <h2>Resultados</h2>
 
         {loading ? (
@@ -100,7 +98,7 @@ export function UsersPage() {
           <p>Nenhum registro encontrado.</p>
         ) : (
           <>
-            <table className="dados-table">
+            <table className="dados-table" style={{ minWidth: "1600px" }}>
               <thead>
                 <tr>
                   <th>ID</th>
@@ -109,14 +107,31 @@ export function UsersPage() {
                   <th className="sticky-col sticky-header">Nome</th>
                   <th>CPF</th>
                   <th>RG</th>
-                  <th>Endereço</th>
-                  <th>Estado Civil</th>
-                  <th>Situação</th>
+
+                  {/* CAMPOS DE ENDEREÇO NOVOS */}
+                  <th>Logradouro</th>
+                  <th>Número</th>
+                  <th>Complemento</th>
+                  <th>Bairro</th>
+                  <th>CEP</th>
+                  <th>Cidade</th>
+                  <th>Estado</th>
+                  <th>Tipo Endereço</th>
+                  <th>Correspondência</th>
+
+                  {/* CONTATO */}
                   <th>Telefone</th>
+                  <th>Cel/Skype</th>
+                  <th>Email</th>
+
+                  {/* OUTROS */}
+                  <th>Situação</th>
+                  <th>Estado Civil</th>
                   <th>Nome Esposa</th>
                   <th>Valor Benefício</th>
                   <th>Ativo</th>
                   <th>Desconto Folha</th>
+
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -127,13 +142,29 @@ export function UsersPage() {
                     <td>{u.id}</td>
                     <td>{u.matriculaSistel}</td>
                     <td>{u.matriculaAstel}</td>
+
                     <td className="sticky-col sticky-cell">{u.nome}</td>
+
                     <td>{u.cpf}</td>
                     <td>{u.rg}</td>
-                    <td>{u.endereco}</td>
-                    <td>{u.estadoCivil}</td>
-                    <td>{u.situacao}</td>
+
+                    {/* NOVOS CAMPOS */}
+                    <td>{u.logradouro}</td>
+                    <td>{u.numero}</td>
+                    <td>{u.complemento}</td>
+                    <td>{u.bairro}</td>
+                    <td>{u.cep}</td>
+                    <td>{u.cidade}</td>
+                    <td>{u.estado}</td>
+                    <td>{u.tipoEndereco}</td>
+                    <td>{u.correspondencia}</td>
+
                     <td>{u.telefone}</td>
+                    <td>{u.celSkype}</td>
+                    <td>{u.email}</td>
+
+                    <td>{u.situacao}</td>
+                    <td>{u.estadoCivil}</td>
                     <td>{u.nomeEsposa}</td>
                     <td>{u.valorBeneficio}</td>
                     <td>{u.ativo ? "Sim" : "Não"}</td>
@@ -169,7 +200,6 @@ export function UsersPage() {
                         Excluir
                       </button>
                     </td>
-
                   </tr>
                 ))}
               </tbody>
@@ -195,6 +225,7 @@ export function UsersPage() {
                 Próxima ▶
               </button>
             </div>
+
           </>
         )}
       </div>

@@ -7,6 +7,7 @@ import type { User } from "../types/User";
 function cleanPayload(payload: User): User {
   return {
     ...payload,
+
     nome: payload.nome?.trim() || "",
     endereco: payload.endereco?.trim() || "",
     estadoCivil: payload.estadoCivil?.trim() || "",
@@ -14,10 +15,25 @@ function cleanPayload(payload: User): User {
     nomeEsposa: payload.nomeEsposa?.trim() || "",
     cpf: payload.cpf?.trim() || "",
     rg: payload.rg?.trim() || "",
-    situacao: payload.situacao ? String(payload.situacao) : null,
+
+    situacao: payload.situacao?.trim() || null,
     valorBeneficio: payload.valorBeneficio ? Number(payload.valorBeneficio) : null,
+
+    // 🔥 NOVOS CAMPOS
+    logradouro: payload.logradouro?.trim() || null,
+    celSkype: payload.celSkype?.trim() || null,
+    estado: payload.estado?.trim() || null,
+    cidade: payload.cidade?.trim() || null,
+    tipoEndereco: payload.tipoEndereco?.trim() || null,
+    correspondencia: payload.correspondencia?.trim() || null,
+    numero: payload.numero?.trim() || null,
+    complemento: payload.complemento?.trim() || null,
+    bairro: payload.bairro?.trim() || null,
+    email: payload.email?.trim() || null,
+    cep: payload.cep?.trim() || null,
   };
 }
+
 
 
 /**

@@ -30,7 +30,6 @@ export function CreateOrEditUserPage() {
   useEffect(() => {
     if (registroId) {
       getDadosCadastraisById(registroId).then((data) => {
-
         reset({
           ...data,
           situacao: data.situacao ?? "",
@@ -41,7 +40,6 @@ export function CreateOrEditUserPage() {
 
   async function onSubmit(data: User) {
     setServerErrors([]);
-
     data.situacao = data.situacao ?? "";
 
     try {
@@ -73,8 +71,10 @@ export function CreateOrEditUserPage() {
       )}
 
       <form className="form-grid" onSubmit={handleSubmit(onSubmit)}>
-
-        {/* Coluna 1 */}
+        
+        {/* =======================
+            COLUNA 1
+        ======================== */}
         <div className="form-column">
 
           <div className="form-group">
@@ -106,33 +106,67 @@ export function CreateOrEditUserPage() {
             <input type="text" {...register("endereco")} />
           </div>
 
-          {/* SELECT DE SITUAÇÃO — CORRIGIDO */}
           <div className="form-group">
-            <label>Situação</label>
-            <select
-              value={watch("situacao") ?? ""}
-              onChange={(e) => setValue("situacao", e.target.value)}
-              {...register("situacao")}     // 🔥 NÃO É MAIS REQUIRED
-            >
-              <option value="">Selecione</option>
-              <option value="BENEFICIÁRIO">Beneficiário</option>
-              <option value="PENSIONISTA">Pensionista</option>
-              <option value="ATIVO">Ativo</option>
-              <option value="INADIMPLENTE">Inadimplente</option>
-              <option value="FALECIDO">Falecido</option>
-              <option value="TITULAR">Titular</option>
-              <option value="INATIVO">Inativo</option>
-            </select>
+            <label>Logradouro</label>
+            <input type="text" {...register("logradouro")} />
           </div>
 
           <div className="form-group">
-            <label>Valor Benefício</label>
-            <input type="number" step="0.01" {...register("valorBeneficio")} />
+            <label>Número</label>
+            <input type="text" {...register("numero")} />
           </div>
+
+          <div class-name="form-group">
+            <label>Complemento</label>
+            <input type="text" {...register("complemento")} />
+          </div>
+
+          <div className="form-group">
+            <label>Bairro</label>
+            <input type="text" {...register("bairro")} />
+          </div>
+
+          <div className="form-group">
+            <label>CEP</label>
+            <input type="text" {...register("cep")} />
+          </div>
+
         </div>
 
-        {/* Coluna 2 */}
+        {/* =======================
+            COLUNA 2
+        ======================== */}
         <div className="form-column">
+
+          <div className="form-group">
+            <label>Cidade</label>
+            <input type="text" {...register("cidade")} />
+          </div>
+
+          <div className="form-group">
+            <label>Estado</label>
+            <input type="text" {...register("estado")} />
+          </div>
+
+          <div className="form-group">
+            <label>Tipo Endereço</label>
+            <input type="text" {...register("tipoEndereco")} />
+          </div>
+
+          <div className="form-group">
+            <label>Correspondência</label>
+            <input type="text" {...register("correspondencia")} />
+          </div>
+
+          <div className="form-group">
+            <label>Cel/Skype</label>
+            <input type="text" {...register("celSkype")} />
+          </div>
+
+          <div className="form-group">
+            <label>Email</label>
+            <input type="text" {...register("email")} />
+          </div>
 
           <div className="form-group">
             <label>Estado Civil</label>
@@ -157,6 +191,29 @@ export function CreateOrEditUserPage() {
           <div className="form-group">
             <label>RG</label>
             <input type="text" {...register("rg")} />
+          </div>
+
+          <div className="form-group">
+            <label>Situação</label>
+            <select
+              value={watch("situacao") ?? ""}
+              onChange={(e) => setValue("situacao", e.target.value)}
+              {...register("situacao")}
+            >
+              <option value="">Selecione</option>
+              <option value="BENEFICIÁRIO">Beneficiário</option>
+              <option value="PENSIONISTA">Pensionista</option>
+              <option value="ATIVO">Ativo</option>
+              <option value="INADIMPLENTE">Inadimplente</option>
+              <option value="FALECIDO">Falecido</option>
+              <option value="TITULAR">Titular</option>
+              <option value="INATIVO">Inativo</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Valor Benefício</label>
+            <input type="number" step="0.01" {...register("valorBeneficio")} />
           </div>
 
           <div className="checkbox-row">
