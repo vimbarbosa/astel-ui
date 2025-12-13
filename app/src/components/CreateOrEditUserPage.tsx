@@ -116,7 +116,7 @@ export function CreateOrEditUserPage() {
             <input type="text" {...register("numero")} />
           </div>
 
-          <div class-name="form-group">
+          <div className="form-group">
             <label>Complemento</label>
             <input type="text" {...register("complemento")} />
           </div>
@@ -216,12 +216,23 @@ export function CreateOrEditUserPage() {
             <input type="number" step="0.01" {...register("valorBeneficio")} />
           </div>
 
+          <div className="form-group">
+            <label>Forma de Pagamento</label>
+            <select
+              value={watch("formaPagamento") ?? ""}
+              onChange={(e) => setValue("formaPagamento", e.target.value)}
+              {...register("formaPagamento")}
+            >
+              <option value="">Selecione</option>
+              <option value="DEPOSITO MENSAL">DEPOSITO MENSAL</option>
+              <option value="BOLETO TRIMESTRAL">BOLETO TRIMESTRAL</option>
+              <option value="FOLHA SISTEL MENSAL">FOLHA SISTEL MENSAL</option>
+            </select>
+          </div>
+
           <div className="checkbox-row">
             <label>
               <input type="checkbox" {...register("ativo")} /> Ativo
-            </label>
-            <label>
-              <input type="checkbox" {...register("descontoFolha")} /> Desconto Folha
             </label>
           </div>
 

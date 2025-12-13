@@ -31,6 +31,7 @@ function cleanPayload(payload: User): User {
     bairro: payload.bairro?.trim() || null,
     email: payload.email?.trim() || null,
     cep: payload.cep?.trim() || null,
+    formaPagamento: payload.formaPagamento?.trim() || null,
   };
 }
 
@@ -116,6 +117,8 @@ export async function filtrarDadosCadastrais(params: {
   nome?: string;
   cpf?: string;
   matriculaAstel?: number;
+  formapagamento?: string;
+  ativo?: boolean;
   pageNumber?: number;
   pageSize?: number;
 }) {
@@ -125,6 +128,9 @@ export async function filtrarDadosCadastrais(params: {
   if (params.cpf) query.append("cpf", params.cpf);
   if (params.matriculaAstel)
     query.append("matriculaAstel", params.matriculaAstel.toString());
+  if (params.formapagamento) query.append("formapagamento", params.formapagamento);
+  if (params.ativo !== undefined)
+    query.append("ativo", params.ativo ? "true" : "false");
 
   query.append("pageNumber", params.pageNumber?.toString() ?? "1");
   query.append("pageSize", params.pageSize?.toString() ?? "10");
@@ -138,4 +144,33 @@ export async function filtrarDadosCadastrais(params: {
     currentPage: Number(response.headers["x-current-page"] ?? 1),
     pageSize: Number(response.headers["x-page-size"] ?? 10),
   };
+}
+
+/**
+ * Autocomplete de nomes para busca
+ */
+export interface AutocompleteItem {
+  id: number;
+  nome: string;
+  matriculaAstel: number | null;
+}
+
+export async function autocompleteDadosCadastrais(
+  termo: string,
+  limit: number = 10
+): Promise<AutocompleteItem[]> {
+  const query = new URLSearchParams();
+  if (termo) query.append("termo", termo);
+  if (limit) query.append("limit", limit.toString());
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const response = await fetch(
+    `${baseUrl}/api/DadosCadastrais/autocomplete?${query.toString()}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Erro ao buscar autocomplete");
+  }
+
+  return await response.json();
 }

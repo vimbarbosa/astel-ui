@@ -28,4 +28,5 @@ export interface User {
   bairro?: string | null;
   email?: string | null;
   cep?: string | null;
+  formaPagamento?: string | null;
 }

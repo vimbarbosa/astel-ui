@@ -10,7 +10,6 @@ export interface DadosFinanceirosDTO {
   mes: number;
   valorPago: number | null;
 
-  // 🔥 CAMPOS DO CADASTRO
   matriculaSistel?: number | null;
   matriculaAstel?: number | null;
   nome?: string;
@@ -30,6 +29,8 @@ export interface DadosFinanceirosDTO {
   telefone?: string | null;
   celSkype?: string | null;
   email?: string | null;
+  descontoFolha?: boolean;
+  formaPagamento?: string | null;
 
   situacao?: string | null;
   estadoCivil?: string | null;
@@ -103,6 +104,7 @@ export async function filtrarFinanceiro(params: {
   dataInicio?: string;
   dataFim?: string;
   inadimplente?: boolean;
+  formapagamento?: string;
 
   cidade?: string;
   estado?: string;
@@ -124,6 +126,8 @@ export async function filtrarFinanceiro(params: {
   if (params.inadimplente !== undefined)
     query.append("inadimplente", params.inadimplente ? "true" : "false");
 
+  if (params.formapagamento) query.append("formapagamento", params.formapagamento);
+
   if (params.cidade) query.append("cidade", params.cidade);
   if (params.estado) query.append("estado", params.estado);
   if (params.email) query.append("email", params.email);
@@ -134,17 +138,34 @@ export async function filtrarFinanceiro(params: {
 
   const response = await http.get(`/DadosFinanceiros/filtrar?${query.toString()}`);
 
+  // somaValorPago agora vem dentro do objeto data (primeiro registro ou em algum registro)
+  let somaValorPago = 0;
+  if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+    // Procurar o campo somaValorPago no primeiro registro ou em qualquer registro
+    const primeiroRegistro = response.data[0] as any;
+    if (primeiroRegistro && typeof primeiroRegistro.somaValorPago === 'number') {
+      somaValorPago = primeiroRegistro.somaValorPago;
+    } else {
+      // Tentar encontrar em qualquer registro do array
+      const registroComSoma = response.data.find((r: any) => r.somaValorPago != null);
+      if (registroComSoma && typeof registroComSoma.somaValorPago === 'number') {
+        somaValorPago = registroComSoma.somaValorPago;
+      }
+    }
+  }
+
   return {
     data: response.data,
     totalCount: Number(response.headers["x-total-count"] ?? 0),
     totalPages: Number(response.headers["x-total-pages"] ?? 1),
     currentPage: Number(response.headers["x-current-page"] ?? 1),
     pageSize: Number(response.headers["x-page-size"] ?? 10),
+    somaValorPago: somaValorPago,
   };
 }
 
 /**
- * NOVO ENDPOINT — EXPORTAÇÃO CSV (SEM PAGINAÇÃO)
+ * EXPORTAÇÃO CSV
  */
 export async function exportarFinanceiroCSV(params: {
   nome?: string;
@@ -183,28 +204,200 @@ export async function exportarFinanceiroCSV(params: {
 
   if (!res.ok) throw new Error("Erro ao exportar CSV.");
 
-  return await res.blob(); 
+  return await res.blob();
 }
 
-export async function exportarFinanceiroExcel(filtros: any) {
-    const params = new URLSearchParams();
+/**
+ * Mapeamento de nomes de colunas do frontend (camelCase) para API (PascalCase)
+ */
+const columnNameMap: Record<string, string> = {
+  id: "Id",
+  idDadosCadastrais: "IdCadastro",
+  matriculaSistel: "MatriculaSistel",
+  matriculaAstel: "MatriculaAstel",
+  nome: "Nome",
+  cpf: "CPF",
+  rg: "RG",
+  logradouro: "Logradouro",
+  numero: "Numero",
+  complemento: "Complemento",
+  bairro: "Bairro",
+  cidade: "Cidade",
+  estado: "Estado",
+  tipoEndereco: "TipoEndereco",
+  correspondencia: "Correspondencia",
+  cep: "CEP",
+  telefone: "Telefone",
+  celSkype: "CelSkype",
+  email: "Email",
+  formaPagamento: "FormaPagamento",
+  descontoFolha: "DescontoFolha",
+  situacao: "Situacao",
+  estadoCivil: "EstadoCivil",
+  ativo: "Ativo",
+  ano: "Ano",
+  mes: "Mes",
+  valorPago: "ValorPago",
+  inadimplente: "Inadimplente"
+};
 
-    Object.keys(filtros).forEach(key => {
-        const value = filtros[key];
-        if (value !== null && value !== undefined && value !== "") {
-            params.append(key, value);
-        }
-    });
+/**
+ * EXPORTAÇÃO XLSX — COM SUPORTE A COLUNAS SELECIONADAS
+ */
+export async function exportarFinanceiroExcel(filtros: {
+  dataInicio?: string;
+  dataFim?: string;
+  nome?: string;
+  cpf?: string;
+  matriculaAstel?: string | number | null;
+  inadimplente?: string | boolean;
+  formapagamento?: string;
+  cidade?: string;
+  estado?: string;
+  email?: string;
+  telefone?: string;
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/DadosFinanceiros/export/excel/xlsx?${params.toString()}`, {
-        method: "GET"
-    });
+  colunas: string[]; // Nomes das colunas em camelCase (frontend)
+}) {
+  const params = new URLSearchParams();
 
-    if (!response.ok) {
-        throw new Error("Falha ao exportar XLSX");
+  // Adicionar filtros
+  if (filtros.dataInicio) params.append("dataInicio", filtros.dataInicio);
+  if (filtros.dataFim) params.append("dataFim", filtros.dataFim);
+  if (filtros.nome) params.append("nome", filtros.nome);
+  if (filtros.cpf) params.append("cpf", filtros.cpf);
+  
+  if (filtros.matriculaAstel) {
+    const matricula = typeof filtros.matriculaAstel === "string" 
+      ? Number(filtros.matriculaAstel) 
+      : filtros.matriculaAstel;
+    if (!isNaN(matricula) && matricula > 0) {
+      params.append("matriculaAstel", matricula.toString());
     }
+  }
 
-    const blob = await response.blob();
-    return blob;
+  if (filtros.inadimplente !== undefined && filtros.inadimplente !== null && filtros.inadimplente !== "") {
+    const inadimplenteValue = typeof filtros.inadimplente === "boolean" 
+      ? filtros.inadimplente 
+      : filtros.inadimplente === "true";
+    params.append("inadimplente", inadimplenteValue ? "true" : "false");
+  }
+
+  if (filtros.formapagamento) params.append("formapagamento", filtros.formapagamento);
+
+  if (filtros.cidade) params.append("cidade", filtros.cidade);
+  if (filtros.estado) params.append("estado", filtros.estado);
+  if (filtros.email) params.append("email", filtros.email);
+  if (filtros.telefone) params.append("telefone", filtros.telefone);
+
+  // Adicionar colunas (convertendo para PascalCase e usando "columns" como nome do parâmetro)
+  if (filtros.colunas && filtros.colunas.length > 0) {
+    filtros.colunas.forEach(col => {
+      const apiColumnName = columnNameMap[col] || col;
+      params.append("columns", apiColumnName);
+    });
+  }
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const url = `${baseUrl}/api/DadosFinanceiros/export/excel/xlsx?${params.toString()}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("Falha ao exportar XLSX");
+  }
+
+  const blob = await response.blob();
+  return blob;
 }
 
+/**
+ * GERAR MODELO DE IMPORTAÇÃO
+ */
+export async function gerarModeloImportacao(filtros: {
+  dataInicio?: string;
+  dataFim?: string;
+  nome?: string;
+  cpf?: string;
+  matriculaAstel?: string | number | null;
+  inadimplente?: string | boolean;
+  formapagamento?: string;
+  cidade?: string;
+  estado?: string;
+  email?: string;
+  telefone?: string;
+}) {
+  const params = new URLSearchParams();
+
+  // Adicionar filtros
+  if (filtros.dataInicio) params.append("dataInicio", filtros.dataInicio);
+  if (filtros.dataFim) params.append("dataFim", filtros.dataFim);
+  if (filtros.nome) params.append("nome", filtros.nome);
+  if (filtros.cpf) params.append("cpf", filtros.cpf);
+  
+  if (filtros.matriculaAstel) {
+    const matricula = typeof filtros.matriculaAstel === "string" 
+      ? Number(filtros.matriculaAstel) 
+      : filtros.matriculaAstel;
+    if (!isNaN(matricula) && matricula > 0) {
+      params.append("matriculaAstel", matricula.toString());
+    }
+  }
+
+  if (filtros.inadimplente !== undefined && filtros.inadimplente !== null && filtros.inadimplente !== "") {
+    const inadimplenteValue = typeof filtros.inadimplente === "boolean" 
+      ? filtros.inadimplente 
+      : filtros.inadimplente === "true";
+    params.append("inadimplente", inadimplenteValue ? "true" : "false");
+  }
+
+  if (filtros.formapagamento) params.append("formapagamento", filtros.formapagamento);
+
+  if (filtros.cidade) params.append("cidade", filtros.cidade);
+  if (filtros.estado) params.append("estado", filtros.estado);
+  if (filtros.email) params.append("email", filtros.email);
+  if (filtros.telefone) params.append("telefone", filtros.telefone);
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const url = `${baseUrl}/api/DadosFinanceiros/gerar-modelo-importacao?${params.toString()}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("Falha ao gerar modelo de importação");
+  }
+
+  const blob = await response.blob();
+  return blob;
+}
+
+/**
+ * IMPORTAR FINANCEIRO EXCEL
+ */
+export async function importFinanceiroExcel(file: File): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const response = await fetch(`${baseUrl}/api/Import/importFinanceiroExcel`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: "Erro ao importar arquivo." }));
+    throw new Error(errorData.message || "Erro ao importar arquivo.");
+  }
+
+  return await response.json();
+}

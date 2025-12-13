@@ -10,7 +10,8 @@ export function UsersPage() {
   // filtros
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
-  const [matriculaAstel, setMatriculaAstel] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState("");
+  const [ativo, setAtivo] = useState("");
 
   // paginação
   const [page, setPage] = useState(1);
@@ -25,7 +26,8 @@ export function UsersPage() {
     const res = await filtrarDadosCadastrais({
       nome: nome || undefined,
       cpf: cpf || undefined,
-      matriculaAstel: matriculaAstel ? Number(matriculaAstel) : undefined,
+      formapagamento: formaPagamento || undefined,
+      ativo: ativo === "" ? undefined : ativo === "true",
       pageNumber: page,
       pageSize,
     });
@@ -77,12 +79,26 @@ export function UsersPage() {
             onChange={(e) => setCpf(e.target.value)}
           />
 
-          <input
-            type="text"
-            placeholder="Matrícula ASTEL"
-            value={matriculaAstel}
-            onChange={(e) => setMatriculaAstel(e.target.value)}
-          />
+          <select 
+            value={formaPagamento} 
+            onChange={(e) => setFormaPagamento(e.target.value)}
+            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+          >
+            <option value="">Todas as Formas</option>
+            <option value="DEPOSITO MENSAL">DEPOSITO MENSAL</option>
+            <option value="BOLETO TRIMESTRAL">BOLETO TRIMESTRAL</option>
+            <option value="FOLHA SISTEL MENSAL">FOLHA SISTEL MENSAL</option>
+          </select>
+
+          <select 
+            value={ativo} 
+            onChange={(e) => setAtivo(e.target.value)}
+            style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+          >
+            <option value="">Todos</option>
+            <option value="true">Ativo</option>
+            <option value="false">Inativo</option>
+          </select>
 
           <button onClick={resetAndFetch}>Buscar</button>
         </div>
@@ -101,7 +117,6 @@ export function UsersPage() {
             <table className="dados-table" style={{ minWidth: "1600px" }}>
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Matrícula Sistel</th>
                   <th>Matrícula Astel</th>
                   <th className="sticky-col sticky-header">Nome</th>
@@ -130,7 +145,7 @@ export function UsersPage() {
                   <th>Nome Esposa</th>
                   <th>Valor Benefício</th>
                   <th>Ativo</th>
-                  <th>Desconto Folha</th>
+                  <th>Forma de Pagamento</th>
 
                   <th>Ações</th>
                 </tr>
@@ -139,7 +154,6 @@ export function UsersPage() {
               <tbody>
                 {records.map((u) => (
                   <tr key={u.id}>
-                    <td>{u.id}</td>
                     <td>{u.matriculaSistel}</td>
                     <td>{u.matriculaAstel}</td>
 
@@ -168,7 +182,7 @@ export function UsersPage() {
                     <td>{u.nomeEsposa}</td>
                     <td>{u.valorBeneficio}</td>
                     <td>{u.ativo ? "Sim" : "Não"}</td>
-                    <td>{u.descontoFolha ? "Sim" : "Não"}</td>
+                    <td>{u.formaPagamento || "-"}</td>
 
                     <td>
                       <button
