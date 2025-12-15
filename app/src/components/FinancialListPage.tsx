@@ -6,8 +6,7 @@ import {
   getCadastroPorMatriculaAstel,
   exportarFinanceiroCSV,
   exportarFinanceiroExcel,
-  gerarModeloImportacao,
-  importFinanceiroExcel
+  importSistel
 } from "../api/dadosFinanceirosApi";
 
 import { autocompleteDadosCadastrais, type AutocompleteItem } from "../api/dadosCadastraisApi";
@@ -33,6 +32,7 @@ export default function FinancialListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [somaValorPago, setSomaValorPago] = useState<number>(0);
 
   // Filtros
@@ -198,6 +198,7 @@ export default function FinancialListPage() {
     setGroupedRecords(grouped);
     
     setTotalPages(result.totalPages);
+    setTotalCount(result.totalCount || 0);
     setSomaValorPago(result.somaValorPago || 0);
     setLoading(false);
   }
@@ -255,6 +256,7 @@ export default function FinancialListPage() {
     setGroupedRecords(grouped);
     
     setTotalPages(result.totalPages);
+    setTotalCount(result.totalCount || 0);
     
     // Buscar somaValorPago do objeto data se não vier no resultado
     let soma = result.somaValorPago || 0;
@@ -424,7 +426,7 @@ export default function FinancialListPage() {
     setImportLoading(true);
 
     try {
-      const result = await importFinanceiroExcel(importFile);
+      const result = await importSistel(importFile);
       alert(result.message);
       
       // Limpar arquivo selecionado
@@ -512,44 +514,179 @@ export default function FinancialListPage() {
   }
 
   // ===============================
-  // GERAR MODELO DE IMPORTAÇÃO
-  // ===============================
-  const handleGerarModeloImportacao = async () => {
-    try {
-      const filtros = {
-        dataInicio,
-        dataFim,
-        nome,
-        cpf,
-        inadimplente,
-        formapagamento: formaPagamento,
-        cidade,
-        estado,
-        email,
-        telefone
-      };
-
-      const blob = await gerarModeloImportacao(filtros);
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "modelo_importacao.xlsx";
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao gerar modelo de importação");
-    }
-  };
-
-  // ===============================
   // EXPORTAÇÃO XLSX
   // ===============================
   const handleOpenExportModal = () => {
     // Sempre inicializar com todas as colunas disponíveis (incluindo ano, mes e valorPago)
     setExportColumns([...allColumns]);
     setShowExportModal(true);
+  };
+
+  // ===============================
+  // IMPRESSÃO
+  // ===============================
+  const handlePrint = () => {
+    // Criar HTML para impressão
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Por favor, permita pop-ups para imprimir.");
+      return;
+    }
+
+    // Gerar cabeçalho da tabela
+    const tableHeaders = `
+      <tr>
+        <th>Matrícula Sistel</th>
+        <th>Matrícula Astel</th>
+        <th>Nome</th>
+        <th>Forma de Pagamento</th>
+        <th>CPF</th>
+        <th>RG</th>
+        <th>Logradouro</th>
+        <th>Número</th>
+        <th>Complemento</th>
+        <th>Bairro</th>
+        <th>Cidade</th>
+        <th>Estado</th>
+        <th>Tipo End.</th>
+        <th>Correspondência</th>
+        <th>CEP</th>
+        <th>Telefone</th>
+        <th>Cel/Skype</th>
+        <th>Email</th>
+        <th>Situação</th>
+        <th>Estado Civil</th>
+        <th>Ativo</th>
+        <th>Inadimplente?</th>
+      </tr>
+    `;
+
+    // Gerar linhas da tabela
+    const tableRows = Array.from(groupedRecords.entries())
+      .map(([matriculaAstel, records]) => {
+        const representative = records[0];
+        const count = records.length;
+        return `
+          <tr>
+            <td>${representative.matriculaSistel || ""}</td>
+            <td>${representative.matriculaAstel || ""}</td>
+            <td>${representative.nome || ""}</td>
+            <td>${representative.formaPagamento || "-"}</td>
+            <td>${representative.cpf || ""}</td>
+            <td>${representative.rg || ""}</td>
+            <td>${representative.logradouro || ""}</td>
+            <td>${representative.numero || ""}</td>
+            <td>${representative.complemento || ""}</td>
+            <td>${representative.bairro || ""}</td>
+            <td>${representative.cidade || ""}</td>
+            <td>${representative.estado || ""}</td>
+            <td>${representative.tipoEndereco || ""}</td>
+            <td>${representative.correspondencia || ""}</td>
+            <td>${representative.cep || ""}</td>
+            <td>${representative.telefone || ""}</td>
+            <td>${representative.celSkype || ""}</td>
+            <td>${representative.email || ""}</td>
+            <td>${representative.situacao || ""}</td>
+            <td>${representative.estadoCivil || ""}</td>
+            <td>${representative.ativo ? "Sim" : "Não"}</td>
+            <td>${representative.inadimplente ? "Sim" : "Não"}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    // HTML completo com estilos para impressão
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Relatório Financeiro</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+                size: A4 landscape;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 10px;
+              margin: 20px;
+            }
+            h1 {
+              text-align: center;
+              margin-bottom: 20px;
+              font-size: 18px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 6px;
+              text-align: left;
+            }
+            th {
+              background-color: #f2f2f2;
+              font-weight: bold;
+              font-size: 9px;
+            }
+            td {
+              font-size: 9px;
+            }
+            .footer {
+              margin-top: 20px;
+              text-align: right;
+              font-size: 10px;
+            }
+            .total {
+              font-weight: bold;
+              margin-top: 10px;
+              font-size: 11px;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Relatório Financeiro</h1>
+          <div style="margin-bottom: 10px; font-size: 10px;">
+            <strong>Data de impressão:</strong> ${new Date().toLocaleString("pt-BR")}
+          </div>
+          <div style="margin-bottom: 10px; font-size: 10px;">
+            <strong>Total de registros:</strong> ${Array.from(groupedRecords.values()).reduce((acc, records) => acc + records.length, 0)}
+          </div>
+          <table>
+            <thead>
+              ${tableHeaders}
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+          <div class="total">
+            <strong>Total de Pagamentos:</strong> ${somaValorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </div>
+          <div class="footer">
+            Página ${page} de ${totalPages}
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Aguardar um pouco para garantir que o conteúdo foi carregado antes de imprimir
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   };
 
   const handleConfirmExport = async () => {
@@ -1095,22 +1232,6 @@ export default function FinancialListPage() {
               </button>
 
               <button
-                onClick={handleGerarModeloImportacao}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#17a2b8",
-                  color: "white",
-                  borderRadius: "4px",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: "500",
-                  fontSize: "14px"
-                }}
-              >
-                Modelo Importação
-              </button>
-
-              <button
                 onClick={handleOpenExportModal}
                 style={{
                   padding: "10px 20px",
@@ -1125,6 +1246,22 @@ export default function FinancialListPage() {
             >
               Exportar XLSX
             </button>
+
+              <button
+                onClick={handlePrint}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  borderRadius: "4px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  fontSize: "14px"
+                }}
+              >
+                Imprimir
+              </button>
             </div>
           </div>
         </div>
@@ -1282,6 +1419,12 @@ export default function FinancialListPage() {
                 border: "1px solid #dee2e6"
               }}>
                 <span style={{ fontSize: "14px", fontWeight: "500", color: "#666" }}>
+                  Total de Registros:
+                </span>
+                <span style={{ fontSize: "16px", fontWeight: "600", color: "#333" }}>
+                  {totalCount.toLocaleString("pt-BR")}
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: "500", color: "#666", marginLeft: "16px" }}>
                   Total de Pagamentos:
                 </span>
                 <span style={{ fontSize: "16px", fontWeight: "600", color: "#28a745" }}>
@@ -1309,6 +1452,7 @@ export default function FinancialListPage() {
                   <option value={20}>20</option>
                   <option value={50}>50</option>
                   <option value={100}>100</option>
+                  <option value={1000}>1000</option>
                 </select>
               </div>
             </div>

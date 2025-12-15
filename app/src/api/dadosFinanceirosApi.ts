@@ -401,3 +401,25 @@ export async function importFinanceiroExcel(file: File): Promise<{ message: stri
 
   return await response.json();
 }
+
+/**
+ * IMPORTAR FINANCEIRO EXCEL USANDO MATRÍCULA SISTEL
+ * Usa Matrícula Sistel para buscar IdDadosCadastrais e extrai mês/ano do campo DATA_PAGAMENTO
+ */
+export async function importSistel(file: File): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const response = await fetch(`${baseUrl}/api/Import/importSistel`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: "Erro ao importar arquivo." }));
+    throw new Error(errorData.message || "Erro ao importar arquivo.");
+  }
+
+  return await response.json();
+}
