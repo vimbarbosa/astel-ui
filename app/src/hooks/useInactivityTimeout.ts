@@ -9,7 +9,7 @@ export function useInactivityTimeout(
   timeoutMinutes: number,
   onTimeout: () => void
 ) {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onTimeoutRef = useRef(onTimeout);
 
   // Atualizar a referência da função sempre que ela mudar
