@@ -1,9 +1,10 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import FinancialListPage from "./components/FinancialListPage";
 import { CreateOrEditUserPage } from "./components/CreateOrEditUserPage";
 import { UsersPage } from "./components/UsersPage";
+import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 import "./index.css";
 
 // Ícones
@@ -56,11 +57,13 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
 }
 
 // 🔒 Componente protegido
-function ProtectedApp() {
+function ProtectedApp({ onLogout }: { onLogout: () => void }) {
   function handleLogout() {
-    localStorage.removeItem("astelAuth");
-    window.location.reload();
+    onLogout();
   }
+
+  // Monitorar inatividade - após 20 minutos, fazer logout automático
+  useInactivityTimeout(20, onLogout);
 
   return (
     <BrowserRouter>
@@ -87,7 +90,7 @@ function ProtectedApp() {
               Novo Cadastro
             </NavLink>
 
-            <button className="logout-btn" onClick={handleLogout}>
+            <button className="logout-btn" onClick={onLogout}>
               <LogOut size={16} style={{ marginRight: "6px" }} />
               Sair
             </button>
@@ -119,11 +122,20 @@ function Root() {
     localStorage.getItem("astelAuth") === "true"
   );
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("astelAuth");
+    setIsAuthenticated(false);
+  }, []);
+
+  const handleLogin = useCallback(() => {
+    setIsAuthenticated(true);
+  }, []);
+
   if (!isAuthenticated) {
-    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+    return <LoginPage onLogin={handleLogin} />;
   }
 
-  return <ProtectedApp />;
+  return <ProtectedApp onLogout={handleLogout} />;
 }
 
 createRoot(document.getElementById("root")!).render(
