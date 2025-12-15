@@ -46,12 +46,6 @@ export default function FinancialListPage() {
   const [inadimplente, setInadimplente] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("");
 
-  // Novos filtros
-  const [cidade, setCidade] = useState("");
-  const [estado, setEstado] = useState("");
-  const [email, setEmail] = useState("");
-  const [telefone, setTelefone] = useState("");
-
   // Inserção de pagamento
   const [nomeInsert, setNomeInsert] = useState("");
   const [sugestoes, setSugestoes] = useState<AutocompleteItem[]>([]);
@@ -173,11 +167,6 @@ export default function FinancialListPage() {
       inadimplente: inadimplente === "" ? undefined : inadimplente === "true",
       formapagamento: formaPagamento || undefined,
 
-      cidade: cidade || undefined,
-      estado: estado || undefined,
-      email: email || undefined,
-      telefone: telefone || undefined,
-
       pageNumber: page,
       pageSize,
     });
@@ -231,11 +220,6 @@ export default function FinancialListPage() {
       inadimplente: inadimplente === "" ? undefined : inadimplente === "true",
       formapagamento: formaPagamento || undefined,
 
-      cidade: cidade || undefined,
-      estado: estado || undefined,
-      email: email || undefined,
-      telefone: telefone || undefined,
-
       pageNumber: 1,
       pageSize,
     });
@@ -288,10 +272,6 @@ export default function FinancialListPage() {
     setDataFim("");
     setInadimplente("");
     setFormaPagamento("");
-    setCidade("");
-    setEstado("");
-    setEmail("");
-    setTelefone("");
     resetAndFetch();
   }
 
@@ -705,10 +685,6 @@ export default function FinancialListPage() {
         cpf,
         inadimplente,
         formapagamento: formaPagamento,
-        cidade,
-        estado,
-        email,
-        telefone,
         colunas: exportColumns
       };
 
@@ -1069,7 +1045,7 @@ export default function FinancialListPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "12px" }}>
                 <div>
                   <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
-                    Data Início
+                    Período de
                   </label>
                   <input 
                     type="date" 
@@ -1080,7 +1056,7 @@ export default function FinancialListPage() {
                 </div>
                 <div>
                   <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
-                    Data Fim
+                    a
                   </label>
                   <input 
                     type="date" 
@@ -1127,72 +1103,6 @@ export default function FinancialListPage() {
                     <option value="BOLETO TRIMESTRAL">BOLETO TRIMESTRAL</option>
                     <option value="FOLHA SISTEL MENSAL">FOLHA SISTEL MENSAL</option>
                   </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Localização */}
-            <div>
-              <h3 style={{ marginBottom: "12px", fontSize: "14px", fontWeight: "600", color: "#333" }}>
-                Localização
-              </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "12px" }}>
-                <div>
-                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
-                    Cidade
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder="Digite a cidade..." 
-                    value={cidade} 
-                    onChange={(e) => setCidade(e.target.value)}
-                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
-                    Estado
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder="Digite o estado..." 
-                    value={estado} 
-                    onChange={(e) => setEstado(e.target.value)}
-                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Contato */}
-            <div>
-              <h3 style={{ marginBottom: "12px", fontSize: "14px", fontWeight: "600", color: "#333" }}>
-                Contato
-              </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "12px" }}>
-                <div>
-                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
-                    Email
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder="Digite o email..." 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
-                    Telefone
-                  </label>
-                  <input 
-                    type="text" 
-                    placeholder="Digite o telefone..." 
-                    value={telefone} 
-                    onChange={(e) => setTelefone(e.target.value)}
-                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
-                  />
                 </div>
               </div>
             </div>
