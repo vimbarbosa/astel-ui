@@ -521,10 +521,12 @@ export default function FinancialListPage() {
     try {
       // Buscar histórico usando o novo endpoint - matriculaAstel = idDadosCadastrais
       const historico = await getHistoricoPagamentoPorUsuario(matriculaAstel);
-      setHistoryRecords(historico);
+      // Garantir que o array está definido (mesmo que vazio)
+      setHistoryRecords(historico || []);
     } catch (error: any) {
       console.error("Erro ao buscar histórico:", error);
       alert(error.message || "Erro ao buscar histórico.");
+      setHistoryRecords([]);
     } finally {
       setHistoryLoading(false);
     }
@@ -566,7 +568,7 @@ export default function FinancialListPage() {
       // Recarregar histórico após exclusão
       setHistoryLoading(true);
       const historico = await getHistoricoPagamentoPorUsuario(selectedIdDadosCadastrais);
-      setHistoryRecords(historico);
+      setHistoryRecords(historico || []);
       
       // Recarregar lista principal
       fetch();
@@ -577,15 +579,16 @@ export default function FinancialListPage() {
         if (selectedIdDadosCadastrais) {
           try {
             const historico = await getHistoricoPagamentoPorUsuario(selectedIdDadosCadastrais);
-            setHistoryRecords(historico);
+            setHistoryRecords(historico || []);
           } catch (e) {
             console.error("Erro ao recarregar histórico:", e);
+            setHistoryRecords([]);
           }
         }
-        return;
+      } else {
+        alert("Erro ao excluir registro.");
+        console.error(error);
       }
-      alert("Erro ao excluir registro.");
-      console.error(error);
     } finally {
       setHistoryLoading(false);
     }
@@ -1948,3 +1951,4 @@ export default function FinancialListPage() {
     </div>
   );
 }
+
