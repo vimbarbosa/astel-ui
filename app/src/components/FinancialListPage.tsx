@@ -8,7 +8,9 @@ import {
   exportarFinanceiroExcel,
   importSistel,
   getHistoricoPagamentoPorUsuario,
-  type HistoricoPagamentoDTO
+  getImportacoes,
+  type HistoricoPagamentoDTO,
+  type ImportacaoDTO
 } from "../api/dadosFinanceirosApi";
 
 import { autocompleteDadosCadastrais, type AutocompleteItem } from "../api/dadosCadastraisApi";
@@ -63,6 +65,14 @@ export default function FinancialListPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Modal de histórico de importações
+  const [showImportacoesModal, setShowImportacoesModal] = useState(false);
+  const [importacoes, setImportacoes] = useState<ImportacaoDTO[]>([]);
+  const [importacoesLoading, setImportacoesLoading] = useState(false);
+  const [filtroNomeArquivo, setFiltroNomeArquivo] = useState("");
+  const [filtroDataInicio, setFiltroDataInicio] = useState("");
+  const [filtroDataFim, setFiltroDataFim] = useState("");
 
   // ===============================
   // CHECKBOX PARA COLUNAS
@@ -429,6 +439,52 @@ export default function FinancialListPage() {
     } finally {
       setImportLoading(false);
     }
+  }
+
+  // ===============================
+  // HISTÓRICO DE IMPORTAÇÕES
+  // ===============================
+  async function handleOpenImportacoesModal() {
+    setShowImportacoesModal(true);
+    await handleBuscarImportacoes();
+  }
+
+  async function handleBuscarImportacoes() {
+    setImportacoesLoading(true);
+    setImportacoes([]);
+
+    try {
+      const params: {
+        nomeArquivo?: string;
+        dataInicio?: string;
+        dataFim?: string;
+      } = {};
+
+      if (filtroNomeArquivo.trim()) {
+        params.nomeArquivo = filtroNomeArquivo.trim();
+      }
+      if (filtroDataInicio) {
+        params.dataInicio = filtroDataInicio;
+      }
+      if (filtroDataFim) {
+        params.dataFim = filtroDataFim;
+      }
+
+      const result = await getImportacoes(params);
+      setImportacoes(result);
+    } catch (error: any) {
+      console.error("Erro ao buscar importações:", error);
+      alert(error.message || "Erro ao buscar histórico de importações.");
+    } finally {
+      setImportacoesLoading(false);
+    }
+  }
+
+  function handleLimparFiltrosImportacoes() {
+    setFiltroNomeArquivo("");
+    setFiltroDataInicio("");
+    setFiltroDataFim("");
+    handleBuscarImportacoes();
   }
 
   // ===============================
@@ -914,6 +970,23 @@ export default function FinancialListPage() {
                 }}
               >
                 {importLoading ? "Importando..." : "Importar em Massa"}
+              </button>
+
+              <button
+                onClick={handleOpenImportacoesModal}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#17a2b8",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                Histórico de Importações
               </button>
             </div>
             {importFile && (
@@ -1663,8 +1736,199 @@ export default function FinancialListPage() {
                 Fechar
             </button>
           </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Modal de Histórico de Importações */}
+      {showImportacoesModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000
+          }}
+          onClick={() => setShowImportacoesModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "8px",
+              padding: "24px",
+              maxWidth: "1000px",
+              width: "90%",
+              maxHeight: "80vh",
+              overflow: "auto",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "600" }}>
+                Histórico de Importações
+              </h2>
+              <button
+                onClick={() => setShowImportacoesModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  color: "#666",
+                  padding: "0",
+                  width: "30px",
+                  height: "30px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Filtros */}
+            <div style={{ 
+              marginBottom: "20px", 
+              padding: "16px", 
+              backgroundColor: "#f8f9fa", 
+              borderRadius: "4px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px"
+            }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
+                    Nome do Arquivo
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Filtrar por nome..."
+                    value={filtroNomeArquivo}
+                    onChange={(e) => setFiltroNomeArquivo(e.target.value)}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
+                    Data Início
+                  </label>
+                  <input
+                    type="date"
+                    value={filtroDataInicio}
+                    onChange={(e) => setFiltroDataInicio(e.target.value)}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
+                    Data Fim
+                  </label>
+                  <input
+                    type="date"
+                    value={filtroDataFim}
+                    onChange={(e) => setFiltroDataFim(e.target.value)}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  onClick={handleBuscarImportacoes}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    fontSize: "14px"
+                  }}
+                >
+                  Buscar
+                </button>
+                <button
+                  onClick={handleLimparFiltrosImportacoes}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#6c757d",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    fontSize: "14px"
+                  }}
+                >
+                  Limpar Filtros
+                </button>
+              </div>
+            </div>
+
+            {/* Tabela de Importações */}
+            {importacoesLoading ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <p>Carregando importações...</p>
+              </div>
+            ) : importacoes.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <p>Não há importações.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>ID</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Arquivo</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Data de Importação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importacoes.map((importacao) => (
+                      <tr key={importacao.id} style={{ borderBottom: "1px solid #dee2e6" }}>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{importacao.id}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{importacao.arquivo}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>
+                          {importacao.importadoEm 
+                            ? new Date(importacao.importadoEm).toLocaleString("pt-BR")
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowImportacoesModal(false)}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  fontSize: "14px"
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

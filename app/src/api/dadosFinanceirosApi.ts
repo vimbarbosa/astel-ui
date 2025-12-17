@@ -462,3 +462,50 @@ export async function getHistoricoPagamentoPorUsuario(
 
   return await response.json();
 }
+
+/**
+ * Interface para o histórico de importações
+ */
+export interface ImportacaoDTO {
+  id: number;
+  arquivo: string;
+  importadoEm: string | null;
+}
+
+/**
+ * Buscar histórico de importações
+ * GET /api/Import/importacoes
+ */
+export async function getImportacoes(params?: {
+  nomeArquivo?: string;
+  dataInicio?: string;
+  dataFim?: string;
+}): Promise<ImportacaoDTO[]> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const queryParams = new URLSearchParams();
+
+  if (params?.nomeArquivo) {
+    queryParams.append("nomeArquivo", params.nomeArquivo);
+  }
+  if (params?.dataInicio) {
+    queryParams.append("dataInicio", params.dataInicio);
+  }
+  if (params?.dataFim) {
+    queryParams.append("dataFim", params.dataFim);
+  }
+
+  const url = `${baseUrl}/api/Import/importacoes${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar importações: ${response.status}`);
+  }
+
+  return await response.json();
+}
