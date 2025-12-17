@@ -9,6 +9,7 @@ import {
   importSistel,
   getHistoricoPagamentoPorUsuario,
   getImportacoes,
+  getDadosFinanceirosPorCadastro,
   type HistoricoPagamentoDTO,
   type ImportacaoDTO
 } from "../api/dadosFinanceirosApi";
@@ -73,6 +74,18 @@ export default function FinancialListPage() {
   const [filtroNomeArquivo, setFiltroNomeArquivo] = useState("");
   const [filtroDataInicio, setFiltroDataInicio] = useState("");
   const [filtroDataFim, setFiltroDataFim] = useState("");
+
+  // Modal de registro de pagamentos
+  const [showRegistroPagamentosModal, setShowRegistroPagamentosModal] = useState(false);
+  const [registroPagamentos, setRegistroPagamentos] = useState<HistoricoPagamentoDTO[]>([]);
+  const [registroPagamentosLoading, setRegistroPagamentosLoading] = useState(false);
+  const [filtroNomeRegistro, setFiltroNomeRegistro] = useState("");
+  const [sugestoesRegistro, setSugestoesRegistro] = useState<AutocompleteItem[]>([]);
+  const [showSuggestionsRegistro, setShowSuggestionsRegistro] = useState(false);
+  const [cadastroSelecionadoRegistro, setCadastroSelecionadoRegistro] = useState<AutocompleteItem | null>(null);
+  const autocompleteRegistroRef = useRef<HTMLDivElement>(null);
+  const [filtroDataInicioRegistro, setFiltroDataInicioRegistro] = useState("");
+  const [filtroDataFimRegistro, setFiltroDataFimRegistro] = useState("");
 
   // ===============================
   // CHECKBOX PARA COLUNAS
@@ -503,6 +516,88 @@ export default function FinancialListPage() {
   }
 
   // ===============================
+  // REGISTRO DE PAGAMENTOS
+  // ===============================
+  function handleOpenRegistroPagamentosModal() {
+    setShowRegistroPagamentosModal(true);
+    // Limpar dados ao abrir
+    setRegistroPagamentos([]);
+    setFiltroNomeRegistro("");
+    setCadastroSelecionadoRegistro(null);
+    setFiltroDataInicioRegistro("");
+    setFiltroDataFimRegistro("");
+  }
+
+  async function handleNomeRegistroChange(value: string) {
+    setFiltroNomeRegistro(value);
+    setCadastroSelecionadoRegistro(null);
+
+    if (value.length >= 2) {
+      try {
+        const results = await autocompleteDadosCadastrais(value, 10);
+        setSugestoesRegistro(results);
+        setShowSuggestionsRegistro(true);
+      } catch (error) {
+        console.error("Erro ao buscar autocomplete:", error);
+        setSugestoesRegistro([]);
+      }
+    } else {
+      setSugestoesRegistro([]);
+      setShowSuggestionsRegistro(false);
+    }
+  }
+
+  function handleSelectSuggestionRegistro(item: AutocompleteItem) {
+    setFiltroNomeRegistro(item.nome);
+    setCadastroSelecionadoRegistro(item);
+    setShowSuggestionsRegistro(false);
+  }
+
+  async function handleBuscarRegistroPagamentos() {
+    if (!cadastroSelecionadoRegistro) {
+      alert("Selecione um nome da lista.");
+      return;
+    }
+
+    setRegistroPagamentosLoading(true);
+    setRegistroPagamentos([]);
+
+    try {
+      const params: {
+        dataInicio?: string;
+        dataFim?: string;
+      } = {};
+
+      if (filtroDataInicioRegistro) {
+        params.dataInicio = filtroDataInicioRegistro;
+      }
+      if (filtroDataFimRegistro) {
+        params.dataFim = filtroDataFimRegistro;
+      }
+
+      // Usar o id do cadastro selecionado (que é a matrícula ASTEL)
+      const idDadosCadastrais = cadastroSelecionadoRegistro.id;
+      const result = await getDadosFinanceirosPorCadastro(idDadosCadastrais, params);
+      const resultArray = Array.isArray(result) ? result : [];
+      setRegistroPagamentos(resultArray);
+    } catch (error: any) {
+      console.error("Erro ao buscar registro de pagamentos:", error);
+      alert(error.message || "Erro ao buscar registro de pagamentos.");
+      setRegistroPagamentos([]);
+    } finally {
+      setRegistroPagamentosLoading(false);
+    }
+  }
+
+  function handleLimparFiltrosRegistroPagamentos() {
+    setFiltroNomeRegistro("");
+    setCadastroSelecionadoRegistro(null);
+    setFiltroDataInicioRegistro("");
+    setFiltroDataFimRegistro("");
+    setRegistroPagamentos([]);
+  }
+
+  // ===============================
   // VER HISTÓRICO
   // ===============================
   async function handleViewHistory(matriculaAstel: number) {
@@ -522,12 +617,13 @@ export default function FinancialListPage() {
       // Buscar histórico usando o novo endpoint - matriculaAstel = idDadosCadastrais
       const historico = await getHistoricoPagamentoPorUsuario(matriculaAstel);
       // Garantir que o array está definido (mesmo que vazio)
-      setHistoryRecords(historico || []);
+      const historicoArray = Array.isArray(historico) ? historico : [];
+      setHistoryRecords(historicoArray);
+      setHistoryLoading(false);
     } catch (error: any) {
       console.error("Erro ao buscar histórico:", error);
       alert(error.message || "Erro ao buscar histórico.");
       setHistoryRecords([]);
-    } finally {
       setHistoryLoading(false);
     }
   }
@@ -1003,6 +1099,23 @@ export default function FinancialListPage() {
                 }}
               >
                 Histórico de Importações
+              </button>
+
+              <button
+                onClick={handleOpenRegistroPagamentosModal}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#6f42c1",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                Registro de Pagamentos
               </button>
             </div>
             {importFile && (
@@ -1679,7 +1792,7 @@ export default function FinancialListPage() {
               <div style={{ textAlign: "center", padding: "40px" }}>
                 <p>Carregando histórico...</p>
               </div>
-            ) : historyRecords.length === 0 ? (
+            ) : !historyRecords || historyRecords.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
                 <p>Não há pagamentos.</p>
               </div>
@@ -1931,6 +2044,262 @@ export default function FinancialListPage() {
             <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
               <button
                 onClick={() => setShowImportacoesModal(false)}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  fontSize: "14px"
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Registro de Pagamentos */}
+      {showRegistroPagamentosModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000
+          }}
+          onClick={() => setShowRegistroPagamentosModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "8px",
+              padding: "24px",
+              maxWidth: "1000px",
+              width: "90%",
+              maxHeight: "80vh",
+              overflow: "auto",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "600" }}>
+                Registro de Pagamentos
+              </h2>
+              <button
+                onClick={() => setShowRegistroPagamentosModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  color: "#666",
+                  padding: "0",
+                  width: "30px",
+                  height: "30px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Filtros */}
+            <div style={{ 
+              marginBottom: "20px", 
+              padding: "16px", 
+              backgroundColor: "#f8f9fa", 
+              borderRadius: "4px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px"
+            }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px" }}>
+                <div ref={autocompleteRegistroRef} style={{ position: "relative" }}>
+                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
+                    Nome
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome..."
+                    value={filtroNomeRegistro}
+                    onChange={(e) => handleNomeRegistroChange(e.target.value)}
+                    onFocus={() => {
+                      if (sugestoesRegistro.length > 0) {
+                        setShowSuggestionsRegistro(true);
+                      }
+                    }}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                  />
+                  
+                  {showSuggestionsRegistro && sugestoesRegistro.length > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        right: 0,
+                        backgroundColor: "white",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        maxHeight: "200px",
+                        overflowY: "auto",
+                        zIndex: 1000,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                        marginTop: "4px"
+                      }}
+                    >
+                      {sugestoesRegistro.map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => handleSelectSuggestionRegistro(item)}
+                          style={{
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            borderBottom: "1px solid #eee"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#f0f0f0";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "white";
+                          }}
+                        >
+                          <div style={{ fontWeight: "bold" }}>{item.nome}</div>
+                          {item.matriculaAstel && (
+                            <div style={{ fontSize: "0.85em", color: "#666" }}>
+                              Matrícula: {item.matriculaAstel}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
+                    Data Início
+                  </label>
+                  <input
+                    type="date"
+                    value={filtroDataInicioRegistro}
+                    onChange={(e) => setFiltroDataInicioRegistro(e.target.value)}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
+                    Data Fim
+                  </label>
+                  <input
+                    type="date"
+                    value={filtroDataFimRegistro}
+                    onChange={(e) => setFiltroDataFimRegistro(e.target.value)}
+                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  onClick={handleBuscarRegistroPagamentos}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    fontSize: "14px"
+                  }}
+                >
+                  Buscar
+                </button>
+                <button
+                  onClick={handleLimparFiltrosRegistroPagamentos}
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#6c757d",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    fontSize: "14px"
+                  }}
+                >
+                  Limpar Filtros
+                </button>
+              </div>
+            </div>
+
+            {/* Tabela de Registros */}
+            {registroPagamentosLoading ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <p>Carregando registros...</p>
+              </div>
+            ) : !registroPagamentos || registroPagamentos.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <p>Não há registros de pagamentos.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>ID</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Ano</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Mês</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Valor Pago</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registroPagamentos.map((registro) => (
+                      <tr key={registro.id} style={{ borderBottom: "1px solid #dee2e6" }}>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{registro.id}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{registro.ano ?? "-"}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{registro.mes ?? "-"}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>
+                          {registro.valorPago != null 
+                            ? registro.valorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                            : "R$ 0,00"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ backgroundColor: "#f8f9fa", borderTop: "2px solid #dee2e6", fontWeight: "600" }}>
+                      <td style={{ padding: "12px", fontSize: "14px", textAlign: "right" }} colSpan={3}>
+                        <strong>Total:</strong>
+                      </td>
+                      <td style={{ padding: "12px", fontSize: "16px", color: "#28a745" }}>
+                        <strong>
+                          {registroPagamentos
+                            .reduce((sum, registro) => sum + (registro.valorPago ?? 0), 0)
+                            .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </strong>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+
+            <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowRegistroPagamentosModal(false)}
                 style={{
                   padding: "10px 20px",
                   backgroundColor: "#6c757d",

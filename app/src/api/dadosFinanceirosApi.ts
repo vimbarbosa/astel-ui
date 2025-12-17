@@ -526,3 +526,43 @@ export async function getImportacoes(params?: {
 
   return await response.json();
 }
+
+/**
+ * Buscar dados financeiros por cadastro
+ * GET /api/DadosFinanceiros/por-cadastro/{idDadosCadastrais}
+ */
+export async function getDadosFinanceirosPorCadastro(
+  idDadosCadastrais: number,
+  params?: {
+    dataInicio?: string;
+    dataFim?: string;
+  }
+): Promise<HistoricoPagamentoDTO[]> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const queryParams = new URLSearchParams();
+
+  if (params?.dataInicio) {
+    queryParams.append("dataInicio", params.dataInicio);
+  }
+  if (params?.dataFim) {
+    queryParams.append("dataFim", params.dataFim);
+  }
+
+  const url = `${baseUrl}/api/DadosFinanceiros/por-cadastro/${idDadosCadastrais}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 400) {
+      throw new Error("ID de cadastro inválido.");
+    }
+    throw new Error(`Erro ao buscar dados financeiros: ${response.status}`);
+  }
+
+  return await response.json();
+}
