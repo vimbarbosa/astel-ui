@@ -6,7 +6,9 @@ import {
   getCadastroPorMatriculaAstel,
   exportarFinanceiroCSV,
   exportarFinanceiroExcel,
-  importSistel
+  importSistel,
+  getHistoricoPagamentoPorUsuario,
+  type HistoricoPagamentoDTO
 } from "../api/dadosFinanceirosApi";
 
 import { autocompleteDadosCadastrais, type AutocompleteItem } from "../api/dadosCadastraisApi";
@@ -25,7 +27,8 @@ export default function FinancialListPage() {
   // Modal de histórico
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedMatriculaAstel, setSelectedMatriculaAstel] = useState<number | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<DadosFinanceirosDTO[]>([]);
+  const [selectedIdDadosCadastrais, setSelectedIdDadosCadastrais] = useState<number | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<HistoricoPagamentoDTO[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Paginação
@@ -432,43 +435,25 @@ export default function FinancialListPage() {
   // VER HISTÓRICO
   // ===============================
   async function handleViewHistory(matriculaAstel: number) {
+    // matriculaAstel é o mesmo que idDadosCadastrais
+    if (!matriculaAstel) {
+      alert("Matrícula ASTEL não encontrada.");
+      return;
+    }
+
     setSelectedMatriculaAstel(matriculaAstel);
+    setSelectedIdDadosCadastrais(matriculaAstel);
     setShowHistoryModal(true);
     setHistoryLoading(true);
     setHistoryRecords([]);
 
     try {
-      // Buscar todos os registros dessa matrícula ASTEL
-      const result = await filtrarFinanceiro({
-        matriculaAstel: matriculaAstel,
-        pageNumber: 1,
-        pageSize: 1000, // Buscar muitos registros para o histórico
-      });
-
-      // Filtrar apenas registros com ano, mês e valorPago preenchidos
-      // E que pertençam à mesma matrícula ASTEL
-      const filtered = result.data.filter(record => 
-        record.matriculaAstel === matriculaAstel &&
-        record.ano != null && 
-        record.ano > 0 && 
-        record.mes != null && 
-        record.mes > 0 && 
-        record.valorPago != null && 
-        record.valorPago > 0
-      );
-
-      // Ordenar por ano e mês (mais recente primeiro)
-      const sorted = filtered.sort((a, b) => {
-        if (a.ano !== b.ano) {
-          return b.ano - a.ano; // Ano decrescente
-        }
-        return b.mes - a.mes; // Mês decrescente
-      });
-
-      setHistoryRecords(sorted);
-    } catch (error) {
+      // Buscar histórico usando o novo endpoint - matriculaAstel = idDadosCadastrais
+      const historico = await getHistoricoPagamentoPorUsuario(matriculaAstel);
+      setHistoryRecords(historico);
+    } catch (error: any) {
       console.error("Erro ao buscar histórico:", error);
-      alert("Erro ao buscar histórico.");
+      alert(error.message || "Erro ao buscar histórico.");
     } finally {
       setHistoryLoading(false);
     }
@@ -490,6 +475,48 @@ export default function FinancialListPage() {
       }
       alert("Erro ao excluir registro.");
       console.error(error);
+    }
+  }
+
+  // ===============================
+  // EXCLUIR REGISTRO DO HISTÓRICO
+  // ===============================
+  async function handleDeleteFromHistory(id: number) {
+    if (!confirm("Deseja realmente excluir este lançamento?")) return;
+
+    if (!selectedIdDadosCadastrais) {
+      alert("ID de cadastro não encontrado.");
+      return;
+    }
+
+    try {
+      await deleteDadosFinanceiros(id);
+      
+      // Recarregar histórico após exclusão
+      setHistoryLoading(true);
+      const historico = await getHistoricoPagamentoPorUsuario(selectedIdDadosCadastrais);
+      setHistoryRecords(historico);
+      
+      // Recarregar lista principal
+      fetch();
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        alert("Registro já removido.");
+        // Recarregar histórico mesmo assim
+        if (selectedIdDadosCadastrais) {
+          try {
+            const historico = await getHistoricoPagamentoPorUsuario(selectedIdDadosCadastrais);
+            setHistoryRecords(historico);
+          } catch (e) {
+            console.error("Erro ao recarregar histórico:", e);
+          }
+        }
+        return;
+      }
+      alert("Erro ao excluir registro.");
+      console.error(error);
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -1535,7 +1562,7 @@ export default function FinancialListPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "600" }}>
-                Histórico de Pagamentos - Matrícula ASTEL: {selectedMatriculaAstel}
+                Histórico de Pagamentos {selectedMatriculaAstel && `- Matrícula ASTEL: ${selectedMatriculaAstel}`}
               </h2>
               <button
                 onClick={() => setShowHistoryModal(false)}
@@ -1581,18 +1608,17 @@ export default function FinancialListPage() {
                     {historyRecords.map((record) => (
                       <tr key={record.id} style={{ borderBottom: "1px solid #dee2e6" }}>
                         <td style={{ padding: "12px", fontSize: "14px" }}>{record.id}</td>
-                        <td style={{ padding: "12px", fontSize: "14px" }}>{record.ano}</td>
-                        <td style={{ padding: "12px", fontSize: "14px" }}>{record.mes}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{record.ano ?? "-"}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{record.mes ?? "-"}</td>
                         <td style={{ padding: "12px", fontSize: "14px" }}>
-                          {record.valorPago?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) || "R$ 0,00"}
+                          {record.valorPago != null 
+                            ? record.valorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                            : "R$ 0,00"}
                     </td>
                         <td style={{ padding: "12px" }}>
                           <button
                             className="delete-btn"
-                            onClick={() => {
-                              handleDelete(record.id);
-                              setShowHistoryModal(false);
-                            }}
+                            onClick={() => handleDeleteFromHistory(record.id)}
                             style={{ fontSize: "12px", padding: "6px 12px" }}
                           >
                       Excluir
@@ -1609,7 +1635,7 @@ export default function FinancialListPage() {
                       <td style={{ padding: "12px", fontSize: "16px", color: "#28a745" }}>
                         <strong>
                           {historyRecords
-                            .reduce((sum, record) => sum + (record.valorPago || 0), 0)
+                            .reduce((sum, record) => sum + (record.valorPago ?? 0), 0)
                             .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </strong>
                       </td>

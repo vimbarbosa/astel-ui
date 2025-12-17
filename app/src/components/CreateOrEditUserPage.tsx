@@ -225,7 +225,6 @@ export function CreateOrEditUserPage() {
             >
               <option value="">Selecione</option>
               <option value="DEPOSITO MENSAL">DEPOSITO MENSAL</option>
-              <option value="BOLETO TRIMESTRAL">BOLETO TRIMESTRAL</option>
               <option value="FOLHA SISTEL MENSAL">FOLHA SISTEL MENSAL</option>
             </select>
           </div>

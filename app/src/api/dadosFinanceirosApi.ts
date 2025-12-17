@@ -423,3 +423,42 @@ export async function importSistel(file: File): Promise<{ message: string }> {
 
   return await response.json();
 }
+
+/**
+ * Interface para o histórico de pagamentos
+ */
+export interface HistoricoPagamentoDTO {
+  id: number;
+  idDadosCadastrais: number;
+  ano: number | null;
+  mes: number | null;
+  valorPago: number | null;
+}
+
+/**
+ * Buscar histórico de pagamentos por ID do cadastro
+ * GET /api/DadosFinanceiros/historico/{idDadosCadastrais}
+ */
+export async function getHistoricoPagamentoPorUsuario(
+  idDadosCadastrais: number
+): Promise<HistoricoPagamentoDTO[]> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const response = await fetch(
+    `${baseUrl}/api/DadosFinanceiros/historico/${idDadosCadastrais}`,
+    {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    if (response.status === 400) {
+      throw new Error("ID de cadastro inválido.");
+    }
+    throw new Error(`Erro ao buscar histórico: ${response.status}`);
+  }
+
+  return await response.json();
+}
