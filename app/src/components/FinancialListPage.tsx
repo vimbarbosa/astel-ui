@@ -1590,7 +1590,7 @@ export default function FinancialListPage() {
               </div>
             ) : historyRecords.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
-                <p>Nenhum registro encontrado.</p>
+                <p>Não há pagamentos.</p>
               </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
