@@ -639,35 +639,33 @@ export default function FinancialListPage() {
       </tr>
     `;
 
-    // Gerar linhas da tabela
-    const tableRows = Array.from(groupedRecords.entries())
-      .map(([matriculaAstel, records]) => {
-        const representative = records[0];
-        const count = records.length;
+    // Gerar linhas da tabela - exibir todos os registros
+    const tableRows = records
+      .map((record) => {
         return `
           <tr>
-            <td>${representative.matriculaSistel || ""}</td>
-            <td>${representative.matriculaAstel || ""}</td>
-            <td>${representative.nome || ""}</td>
-            <td>${representative.formaPagamento || "-"}</td>
-            <td>${representative.cpf || ""}</td>
-            <td>${representative.rg || ""}</td>
-            <td>${representative.logradouro || ""}</td>
-            <td>${representative.numero || ""}</td>
-            <td>${representative.complemento || ""}</td>
-            <td>${representative.bairro || ""}</td>
-            <td>${representative.cidade || ""}</td>
-            <td>${representative.estado || ""}</td>
-            <td>${representative.tipoEndereco || ""}</td>
-            <td>${representative.correspondencia || ""}</td>
-            <td>${representative.cep || ""}</td>
-            <td>${representative.telefone || ""}</td>
-            <td>${representative.celSkype || ""}</td>
-            <td>${representative.email || ""}</td>
-            <td>${representative.situacao || ""}</td>
-            <td>${representative.estadoCivil || ""}</td>
-            <td>${representative.ativo ? "Sim" : "Não"}</td>
-            <td>${representative.inadimplente ? "Sim" : "Não"}</td>
+            <td>${record.matriculaSistel || ""}</td>
+            <td>${record.matriculaAstel || ""}</td>
+            <td>${record.nome || ""}</td>
+            <td>${record.formaPagamento || "-"}</td>
+            <td>${record.cpf || ""}</td>
+            <td>${record.rg || ""}</td>
+            <td>${record.logradouro || ""}</td>
+            <td>${record.numero || ""}</td>
+            <td>${record.complemento || ""}</td>
+            <td>${record.bairro || ""}</td>
+            <td>${record.cidade || ""}</td>
+            <td>${record.estado || ""}</td>
+            <td>${record.tipoEndereco || ""}</td>
+            <td>${record.correspondencia || ""}</td>
+            <td>${record.cep || ""}</td>
+            <td>${record.telefone || ""}</td>
+            <td>${record.celSkype || ""}</td>
+            <td>${record.email || ""}</td>
+            <td>${record.situacao || ""}</td>
+            <td>${record.estadoCivil || ""}</td>
+            <td>${record.ativo ? "Sim" : "Não"}</td>
+            <td>${record.inadimplente ? "Sim" : "Não"}</td>
           </tr>
         `;
       })
@@ -736,7 +734,7 @@ export default function FinancialListPage() {
             <strong>Data de impressão:</strong> ${new Date().toLocaleString("pt-BR")}
           </div>
           <div style="margin-bottom: 10px; font-size: 10px;">
-            <strong>Total de registros:</strong> ${Array.from(groupedRecords.values()).reduce((acc, records) => acc + records.length, 0)}
+            <strong>Total de registros:</strong> ${records.length}
           </div>
           <table>
             <thead>
@@ -1329,55 +1327,57 @@ export default function FinancialListPage() {
             </thead>
 
             <tbody>
-              {Array.from(groupedRecords.entries()).map(([matriculaAstel, records]) => {
-                // Usar o primeiro registro do grupo como representante
-                const representative = records[0];
-                const count = records.length;
+              {records.map((record, index) => {
+                // Contar quantos registros têm a mesma matrícula ASTEL para o histórico
+                const matriculaAstel = record.matriculaAstel;
+                const count = matriculaAstel ? (groupedRecords.get(matriculaAstel)?.length || 1) : 1;
                 
                 return (
-                  <tr key={matriculaAstel}>
-                    <td>{representative.matriculaSistel}</td>
-                    <td>{representative.matriculaAstel}</td>
-                    <td className="sticky-col sticky-cell">{representative.nome}</td>
-                    <td>{representative.formaPagamento || "-"}</td>
-                    <td>{representative.cpf}</td>
-                    <td>{representative.rg}</td>
-                    <td>{representative.logradouro}</td>
-                    <td>{representative.numero}</td>
-                    <td>{representative.complemento}</td>
-                    <td>{representative.bairro}</td>
-                    <td>{representative.cidade}</td>
-                    <td>{representative.estado}</td>
-                    <td>{representative.tipoEndereco}</td>
-                    <td>{representative.correspondencia}</td>
-                    <td>{representative.cep}</td>
-                    <td>{representative.telefone}</td>
-                    <td>{representative.celSkype}</td>
-                    <td>{representative.email}</td>
-                    <td>{representative.situacao}</td>
-                    <td>{representative.estadoCivil}</td>
-                    <td>{representative.ativo ? "Sim" : "Não"}</td>
-                    <td style={{ color: representative.inadimplente ? "red" : "green" }}>
-                      {representative.inadimplente ? "Sim" : "Não"}
+                  <tr key={record.id || index}>
+                    <td>{record.matriculaSistel}</td>
+                    <td>{record.matriculaAstel}</td>
+                    <td className="sticky-col sticky-cell">{record.nome}</td>
+                    <td>{record.formaPagamento || "-"}</td>
+                    <td>{record.cpf}</td>
+                    <td>{record.rg}</td>
+                    <td>{record.logradouro}</td>
+                    <td>{record.numero}</td>
+                    <td>{record.complemento}</td>
+                    <td>{record.bairro}</td>
+                    <td>{record.cidade}</td>
+                    <td>{record.estado}</td>
+                    <td>{record.tipoEndereco}</td>
+                    <td>{record.correspondencia}</td>
+                    <td>{record.cep}</td>
+                    <td>{record.telefone}</td>
+                    <td>{record.celSkype}</td>
+                    <td>{record.email}</td>
+                    <td>{record.situacao}</td>
+                    <td>{record.estadoCivil}</td>
+                    <td>{record.ativo ? "Sim" : "Não"}</td>
+                    <td style={{ color: record.inadimplente ? "red" : "green" }}>
+                      {record.inadimplente ? "Sim" : "Não"}
                     </td>
 
                     <td>
-                      <button
-                        onClick={() => handleViewHistory(matriculaAstel)}
-                        style={{
-                          padding: "8px 16px",
-                          backgroundColor: "#17a2b8",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          fontWeight: "500"
-                        }}
-                        title={`Ver histórico (${count} registro${count > 1 ? 's' : ''})`}
-                      >
-                        Ver Histórico {count > 1 && `(${count})`}
-                      </button>
+                      {matriculaAstel && (
+                        <button
+                          onClick={() => handleViewHistory(matriculaAstel)}
+                          style={{
+                            padding: "8px 16px",
+                            backgroundColor: "#17a2b8",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            fontSize: "14px",
+                            fontWeight: "500"
+                          }}
+                          title={`Ver histórico (${count} registro${count > 1 ? 's' : ''})`}
+                        >
+                          Ver Histórico {count > 1 && `(${count})`}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
