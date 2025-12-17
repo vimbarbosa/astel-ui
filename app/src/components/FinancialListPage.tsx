@@ -200,8 +200,23 @@ export default function FinancialListPage() {
     setGroupedRecords(grouped);
     
     setTotalPages(result.totalPages);
-    setTotalCount(result.totalCount || 0);
-    setSomaValorPago(result.somaValorPago || 0);
+    
+    // Extrair totalRegistros e somaValorPago do primeiro registro se disponível
+    let totalRegistros = result.totalCount || 0;
+    let soma = result.somaValorPago || 0;
+    
+    if (result.data && result.data.length > 0) {
+      const primeiroRegistro = result.data[0] as any;
+      if (primeiroRegistro && typeof primeiroRegistro.totalRegistros === 'number') {
+        totalRegistros = primeiroRegistro.totalRegistros;
+      }
+      if (primeiroRegistro && typeof primeiroRegistro.somaValorPago === 'number') {
+        soma = primeiroRegistro.somaValorPago;
+      }
+    }
+    
+    setTotalCount(totalRegistros);
+    setSomaValorPago(soma);
     setLoading(false);
   }
 
@@ -253,22 +268,22 @@ export default function FinancialListPage() {
     setGroupedRecords(grouped);
     
     setTotalPages(result.totalPages);
-    setTotalCount(result.totalCount || 0);
     
-    // Buscar somaValorPago do objeto data se não vier no resultado
+    // Extrair totalRegistros e somaValorPago do primeiro registro se disponível
+    let totalRegistros = result.totalCount || 0;
     let soma = result.somaValorPago || 0;
-    if (soma === 0 && result.data && result.data.length > 0) {
+    
+    if (result.data && result.data.length > 0) {
       const primeiroRegistro = result.data[0] as any;
+      if (primeiroRegistro && typeof primeiroRegistro.totalRegistros === 'number') {
+        totalRegistros = primeiroRegistro.totalRegistros;
+      }
       if (primeiroRegistro && typeof primeiroRegistro.somaValorPago === 'number') {
         soma = primeiroRegistro.somaValorPago;
-      } else {
-        const registroComSoma = result.data.find((r: any) => r.somaValorPago != null);
-        if (registroComSoma) {
-          soma = registroComSoma.somaValorPago;
-        }
       }
     }
     
+    setTotalCount(totalRegistros);
     setSomaValorPago(soma);
     setLoading(false);
   }

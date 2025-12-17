@@ -37,6 +37,10 @@ export interface DadosFinanceirosDTO {
   ativo?: boolean;
 
   inadimplente?: boolean;
+
+  // Campos agregados retornados pela API
+  somaValorPago?: number;
+  totalRegistros?: number;
 }
 
 /**
@@ -138,11 +142,14 @@ export async function filtrarFinanceiro(params: {
 
   const response = await http.get(`/DadosFinanceiros/filtrar?${query.toString()}`);
 
-  // somaValorPago agora vem dentro do objeto data (primeiro registro ou em algum registro)
+  // somaValorPago e totalRegistros agora vêm dentro do objeto data (primeiro registro ou em qualquer registro)
   let somaValorPago = 0;
+  let totalRegistros = Number(response.headers["x-total-count"] ?? 0);
+  
   if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-    // Procurar o campo somaValorPago no primeiro registro ou em qualquer registro
+    // Procurar os campos somaValorPago e totalRegistros no primeiro registro ou em qualquer registro
     const primeiroRegistro = response.data[0] as any;
+    
     if (primeiroRegistro && typeof primeiroRegistro.somaValorPago === 'number') {
       somaValorPago = primeiroRegistro.somaValorPago;
     } else {
@@ -152,11 +159,21 @@ export async function filtrarFinanceiro(params: {
         somaValorPago = registroComSoma.somaValorPago;
       }
     }
+    
+    if (primeiroRegistro && typeof primeiroRegistro.totalRegistros === 'number') {
+      totalRegistros = primeiroRegistro.totalRegistros;
+    } else {
+      // Tentar encontrar em qualquer registro do array
+      const registroComTotal = response.data.find((r: any) => r.totalRegistros != null);
+      if (registroComTotal && typeof registroComTotal.totalRegistros === 'number') {
+        totalRegistros = registroComTotal.totalRegistros;
+      }
+    }
   }
 
   return {
     data: response.data,
-    totalCount: Number(response.headers["x-total-count"] ?? 0),
+    totalCount: totalRegistros,
     totalPages: Number(response.headers["x-total-pages"] ?? 1),
     currentPage: Number(response.headers["x-current-page"] ?? 1),
     pageSize: Number(response.headers["x-page-size"] ?? 10),
