@@ -518,14 +518,16 @@ export default function FinancialListPage() {
   // ===============================
   // REGISTRO DE PAGAMENTOS
   // ===============================
-  function handleOpenRegistroPagamentosModal() {
+  async function handleOpenRegistroPagamentosModal() {
     setShowRegistroPagamentosModal(true);
     // Limpar dados ao abrir
-    setRegistroPagamentos([]);
     setFiltroNomeRegistro("");
     setCadastroSelecionadoRegistro(null);
     setFiltroDataInicioRegistro("");
     setFiltroDataFimRegistro("");
+    
+    // Carregar últimos 100 registros ao abrir (sem parâmetros)
+    await handleBuscarRegistroPagamentos();
   }
 
   async function handleNomeRegistroChange(value: string) {
@@ -554,19 +556,20 @@ export default function FinancialListPage() {
   }
 
   async function handleBuscarRegistroPagamentos() {
-    if (!cadastroSelecionadoRegistro) {
-      alert("Selecione um nome da lista.");
-      return;
-    }
-
     setRegistroPagamentosLoading(true);
     setRegistroPagamentos([]);
 
     try {
       const params: {
+        idDadosCadastrais?: number;
         dataInicio?: string;
         dataFim?: string;
       } = {};
+
+      // Se houver cadastro selecionado, adicionar ao filtro
+      if (cadastroSelecionadoRegistro) {
+        params.idDadosCadastrais = cadastroSelecionadoRegistro.id;
+      }
 
       if (filtroDataInicioRegistro) {
         params.dataInicio = filtroDataInicioRegistro;
@@ -575,9 +578,8 @@ export default function FinancialListPage() {
         params.dataFim = filtroDataFimRegistro;
       }
 
-      // Usar o id do cadastro selecionado (que é a matrícula ASTEL)
-      const idDadosCadastrais = cadastroSelecionadoRegistro.id;
-      const result = await getDadosFinanceirosPorCadastro(idDadosCadastrais, params);
+      // Chamar API - se todos os parâmetros forem nulos, retorna últimos 100 registros
+      const result = await getDadosFinanceirosPorCadastro(params);
       const resultArray = Array.isArray(result) ? result : [];
       setRegistroPagamentos(resultArray);
     } catch (error: any) {
@@ -589,12 +591,13 @@ export default function FinancialListPage() {
     }
   }
 
-  function handleLimparFiltrosRegistroPagamentos() {
+  async function handleLimparFiltrosRegistroPagamentos() {
     setFiltroNomeRegistro("");
     setCadastroSelecionadoRegistro(null);
     setFiltroDataInicioRegistro("");
     setFiltroDataFimRegistro("");
-    setRegistroPagamentos([]);
+    // Buscar últimos 100 registros após limpar filtros
+    await handleBuscarRegistroPagamentos();
   }
 
   // ===============================
@@ -2260,6 +2263,7 @@ export default function FinancialListPage() {
                   <thead>
                     <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>ID</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>ID Cadastro</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Ano</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Mês</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Valor Pago</th>
@@ -2269,6 +2273,7 @@ export default function FinancialListPage() {
                     {registroPagamentos.map((registro) => (
                       <tr key={registro.id} style={{ borderBottom: "1px solid #dee2e6" }}>
                         <td style={{ padding: "12px", fontSize: "14px" }}>{registro.id}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{registro.idDadosCadastrais}</td>
                         <td style={{ padding: "12px", fontSize: "14px" }}>{registro.ano ?? "-"}</td>
                         <td style={{ padding: "12px", fontSize: "14px" }}>{registro.mes ?? "-"}</td>
                         <td style={{ padding: "12px", fontSize: "14px" }}>
@@ -2281,7 +2286,7 @@ export default function FinancialListPage() {
                   </tbody>
                   <tfoot>
                     <tr style={{ backgroundColor: "#f8f9fa", borderTop: "2px solid #dee2e6", fontWeight: "600" }}>
-                      <td style={{ padding: "12px", fontSize: "14px", textAlign: "right" }} colSpan={3}>
+                      <td style={{ padding: "12px", fontSize: "14px", textAlign: "right" }} colSpan={4}>
                         <strong>Total:</strong>
                       </td>
                       <td style={{ padding: "12px", fontSize: "16px", color: "#28a745" }}>

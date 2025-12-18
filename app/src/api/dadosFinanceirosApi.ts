@@ -529,18 +529,20 @@ export async function getImportacoes(params?: {
 
 /**
  * Buscar dados financeiros por cadastro
- * GET /api/DadosFinanceiros/por-cadastro/{idDadosCadastrais}
+ * GET /api/DadosFinanceiros/por-cadastro
+ * Quando todos os parâmetros são nulos, retorna os últimos 100 registros
  */
-export async function getDadosFinanceirosPorCadastro(
-  idDadosCadastrais: number,
-  params?: {
-    dataInicio?: string;
-    dataFim?: string;
-  }
-): Promise<HistoricoPagamentoDTO[]> {
+export async function getDadosFinanceirosPorCadastro(params?: {
+  idDadosCadastrais?: number;
+  dataInicio?: string;
+  dataFim?: string;
+}): Promise<HistoricoPagamentoDTO[]> {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
   const queryParams = new URLSearchParams();
 
+  if (params?.idDadosCadastrais) {
+    queryParams.append("idDadosCadastrais", params.idDadosCadastrais.toString());
+  }
   if (params?.dataInicio) {
     queryParams.append("dataInicio", params.dataInicio);
   }
@@ -548,7 +550,7 @@ export async function getDadosFinanceirosPorCadastro(
     queryParams.append("dataFim", params.dataFim);
   }
 
-  const url = `${baseUrl}/api/DadosFinanceiros/por-cadastro/${idDadosCadastrais}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+  const url = `${baseUrl}/api/DadosFinanceiros/por-cadastro${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -559,7 +561,7 @@ export async function getDadosFinanceirosPorCadastro(
 
   if (!response.ok) {
     if (response.status === 400) {
-      throw new Error("ID de cadastro inválido.");
+      throw new Error("Parâmetros inválidos.");
     }
     throw new Error(`Erro ao buscar dados financeiros: ${response.status}`);
   }
