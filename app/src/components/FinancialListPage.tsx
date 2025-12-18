@@ -2263,7 +2263,7 @@ export default function FinancialListPage() {
                   <thead>
                     <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>ID</th>
-                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>ID Cadastro</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Nome</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Ano</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Mês</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Valor Pago</th>
@@ -2273,7 +2273,7 @@ export default function FinancialListPage() {
                     {registroPagamentos.map((registro) => (
                       <tr key={registro.id} style={{ borderBottom: "1px solid #dee2e6" }}>
                         <td style={{ padding: "12px", fontSize: "14px" }}>{registro.id}</td>
-                        <td style={{ padding: "12px", fontSize: "14px" }}>{registro.idDadosCadastrais}</td>
+                        <td style={{ padding: "12px", fontSize: "14px" }}>{registro.nome ?? "-"}</td>
                         <td style={{ padding: "12px", fontSize: "14px" }}>{registro.ano ?? "-"}</td>
                         <td style={{ padding: "12px", fontSize: "14px" }}>{registro.mes ?? "-"}</td>
                         <td style={{ padding: "12px", fontSize: "14px" }}>

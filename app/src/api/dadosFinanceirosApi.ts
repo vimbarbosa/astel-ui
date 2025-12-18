@@ -447,6 +447,7 @@ export async function importSistel(file: File): Promise<{ message: string }> {
 export interface HistoricoPagamentoDTO {
   id: number;
   idDadosCadastrais: number;
+  nome?: string | null;
   ano: number | null;
   mes: number | null;
   valorPago: number | null;
