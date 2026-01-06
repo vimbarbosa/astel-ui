@@ -3,6 +3,7 @@ import {
   filtrarFinanceiro,
   deleteDadosFinanceiros,
   createDadosFinanceiros,
+  updateDadosFinanceiros,
   getCadastroPorMatriculaAstel,
   exportarFinanceiroCSV,
   exportarFinanceiroExcel,
@@ -34,6 +35,15 @@ export default function FinancialListPage() {
   const [historyRecords, setHistoryRecords] = useState<HistoricoPagamentoDTO[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // Modal de edição de pagamento
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<HistoricoPagamentoDTO | null>(null);
+  const [editAno, setEditAno] = useState<number>(0);
+  const [editMes, setEditMes] = useState<number>(0);
+  const [editValorPago, setEditValorPago] = useState<number>(0);
+  const [editDataPagamento, setEditDataPagamento] = useState<string>("");
+  const [editLoading, setEditLoading] = useState(false);
+
   // Paginação
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -46,7 +56,6 @@ export default function FinancialListPage() {
   const [sugestoesFiltro, setSugestoesFiltro] = useState<AutocompleteItem[]>([]);
   const [showSuggestionsFiltro, setShowSuggestionsFiltro] = useState(false);
   const autocompleteFiltroRef = useRef<HTMLDivElement>(null);
-  const [cpf, setCpf] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [inadimplente, setInadimplente] = useState("");
@@ -61,6 +70,7 @@ export default function FinancialListPage() {
   const [anoInsert, setAnoInsert] = useState<number>(0);
   const [mesInsert, setMesInsert] = useState<number>(0);
   const [valorInsert, setValorInsert] = useState<number>(0);
+  const [dataPagamentoInsert, setDataPagamentoInsert] = useState<string>("");
 
   // Importação em massa
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -116,6 +126,7 @@ export default function FinancialListPage() {
     "ano",
     "mes",
     "valorPago",
+    "data_Pagamento",
     "inadimplente"
   ];
 
@@ -151,6 +162,7 @@ export default function FinancialListPage() {
     ano: "Ano",
     mes: "Mês",
     valorPago: "Valor Pago",
+    data_Pagamento: "Data Pagamento",
     inadimplente: "Inadimplente"
   };
 
@@ -186,7 +198,6 @@ export default function FinancialListPage() {
 
     const result = await filtrarFinanceiro({
       nome: nome || undefined,
-      cpf: cpf || undefined,
 
       dataInicio: dataInicio || undefined,
       dataFim: dataFim || undefined,
@@ -254,7 +265,6 @@ export default function FinancialListPage() {
 
     const result = await filtrarFinanceiro({
       nome: nomeToSearch || undefined,
-      cpf: cpf || undefined,
 
       dataInicio: dataInicio || undefined,
       dataFim: dataFim || undefined,
@@ -308,7 +318,6 @@ export default function FinancialListPage() {
     setNome("");
     setSugestoesFiltro([]);
     setShowSuggestionsFiltro(false);
-    setCpf("");
     setDataInicio("");
     setDataFim("");
     setInadimplente("");
@@ -401,12 +410,29 @@ export default function FinancialListPage() {
       }
 
     try {
-      await createDadosFinanceiros({
+      const payload: {
+        idDadosCadastrais: number;
+        ano: number;
+        mes: number;
+        valorPago: number;
+        data_Pagamento?: string;
+      } = {
         idDadosCadastrais: cadastroSelecionado.id,
         ano: anoInsert,
         mes: mesInsert,
         valorPago: valorInsert,
-      });
+      };
+
+      // Adicionar data_Pagamento se fornecida
+      if (dataPagamentoInsert) {
+        // Converter data para formato ISO 8601 (yyyy-MM-ddTHH:mm:ss)
+        const data = new Date(dataPagamentoInsert);
+        if (!isNaN(data.getTime())) {
+          payload.data_Pagamento = data.toISOString();
+        }
+      }
+
+      await createDadosFinanceiros(payload);
 
       alert("Pagamento registrado com sucesso!");
       
@@ -416,6 +442,7 @@ export default function FinancialListPage() {
       setAnoInsert(0);
       setMesInsert(0);
       setValorInsert(0);
+      setDataPagamentoInsert("");
       
       fetch();
     } catch (error: any) {
@@ -651,9 +678,137 @@ export default function FinancialListPage() {
   }
 
   // ===============================
+  // EDITAR REGISTRO DO HISTÓRICO
+  // ===============================
+  function handleOpenEditModal(record: HistoricoPagamentoDTO) {
+    setEditingRecord(record);
+    setEditAno(record.ano || 0);
+    setEditMes(record.mes || 0);
+    setEditValorPago(record.valorPago || 0);
+    
+    // Converter data_Pagamento para formato datetime-local se existir
+    if (record.data_Pagamento) {
+      const data = new Date(record.data_Pagamento);
+      if (!isNaN(data.getTime())) {
+        // Formato: YYYY-MM-DDTHH:mm
+        const year = data.getFullYear();
+        const month = String(data.getMonth() + 1).padStart(2, '0');
+        const day = String(data.getDate()).padStart(2, '0');
+        const hours = String(data.getHours()).padStart(2, '0');
+        const minutes = String(data.getMinutes()).padStart(2, '0');
+        setEditDataPagamento(`${year}-${month}-${day}T${hours}:${minutes}`);
+      } else {
+        setEditDataPagamento("");
+      }
+    } else {
+      setEditDataPagamento("");
+    }
+    
+    setShowEditModal(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingRecord || !selectedIdDadosCadastrais) {
+      alert("Erro: registro não encontrado.");
+      return;
+    }
+
+    if (!editAno || !editMes || !editValorPago) {
+      alert("Preencha todos os campos obrigatórios: Ano, Mês e Valor Pago.");
+      return;
+    }
+
+    // Verificar se ano ou mês foram alterados
+    const anoAlterado = editingRecord.ano !== editAno;
+    const mesAlterado = editingRecord.mes !== editMes;
+    
+    if (anoAlterado || mesAlterado) {
+      const confirmMsg = anoAlterado && mesAlterado 
+        ? `Atenção: Você está alterando o Ano (${editingRecord.ano} → ${editAno}) e o Mês (${editingRecord.mes} → ${editMes}). Isso pode causar problemas se a chave primária for composta. Deseja continuar?`
+        : anoAlterado
+        ? `Atenção: Você está alterando o Ano (${editingRecord.ano} → ${editAno}). Isso pode causar problemas se a chave primária for composta. Deseja continuar?`
+        : `Atenção: Você está alterando o Mês (${editingRecord.mes} → ${editMes}). Isso pode causar problemas se a chave primária for composta. Deseja continuar?`;
+      
+      if (!confirm(confirmMsg)) {
+        return;
+      }
+    }
+
+    setEditLoading(true);
+
+    try {
+      const payload: {
+        idDadosCadastrais: number;
+        ano: number;
+        mes: number;
+        valorPago: number;
+        data_Pagamento?: string;
+      } = {
+        idDadosCadastrais: selectedIdDadosCadastrais,
+        ano: editAno,
+        mes: editMes,
+        valorPago: editValorPago,
+      };
+
+      // Adicionar data_Pagamento se fornecida
+      if (editDataPagamento) {
+        const data = new Date(editDataPagamento);
+        if (!isNaN(data.getTime())) {
+          payload.data_Pagamento = data.toISOString();
+        }
+      }
+
+      // Construir o ID com os novos valores de ano e mês
+      // O ID é uma chave composta: idDadosCadastrais + ano + mês
+      // Exemplo: 20000000058420261 = 200000000584 (idDadosCadastrais) + 2026 (ano) + 1 (mês)
+      // O mês não precisa de padding (não é 01, é apenas 1)
+      const novoId = `${selectedIdDadosCadastrais}${editAno}${editMes}`;
+      
+      console.log("Atualizando registro:", {
+        idOriginal: editingRecord.id,
+        novoId: novoId,
+        idDadosCadastrais: selectedIdDadosCadastrais,
+        ano: editAno,
+        mes: editMes,
+        payload: payload
+      });
+      
+      await updateDadosFinanceiros(novoId, payload);
+
+      alert("Pagamento atualizado com sucesso!");
+      
+      // Fechar modal de edição
+      setShowEditModal(false);
+      setEditingRecord(null);
+      
+      // Recarregar histórico
+      setHistoryLoading(true);
+      const historico = await getHistoricoPagamentoPorUsuario(selectedIdDadosCadastrais);
+      const historicoArray = Array.isArray(historico) ? historico : [];
+      setHistoryRecords(historicoArray);
+      
+      // Recarregar lista principal
+      fetch();
+    } catch (error: any) {
+      console.error("Erro ao atualizar registro:", error);
+      const errorMessage = error.message || "Erro ao atualizar registro.";
+      
+      // Mensagem mais específica para erro de concorrência
+      if (errorMessage.includes("concorrência") || errorMessage.includes("concurrency")) {
+        alert("Erro: O registro pode ter sido modificado ou excluído por outro usuário. Por favor, recarregue o histórico e tente novamente.");
+      } else {
+        alert(errorMessage);
+      }
+    } finally {
+      setEditLoading(false);
+      setHistoryLoading(false);
+    }
+  }
+
+  // ===============================
   // EXCLUIR REGISTRO DO HISTÓRICO
   // ===============================
-  async function handleDeleteFromHistory(id: number) {
+  async function handleDeleteFromHistory(record: HistoricoPagamentoDTO) {
     if (!confirm("Deseja realmente excluir este lançamento?")) return;
 
     if (!selectedIdDadosCadastrais) {
@@ -661,13 +816,30 @@ export default function FinancialListPage() {
       return;
     }
 
+    // Construir o ID correto: idDadosCadastrais + ano + mês
+    // Exemplo: 20000000058420261 = 200000000584 (idDadosCadastrais) + 2026 (ano) + 1 (mês)
+    if (!record.ano || !record.mes) {
+      alert("Erro: Ano ou mês não encontrado no registro.");
+      return;
+    }
+
+    const idCorreto = `${record.idDadosCadastrais}${record.ano}${record.mes}`;
+    console.log("Excluindo registro:", {
+      idOriginal: record.id,
+      idCorreto: idCorreto,
+      idDadosCadastrais: record.idDadosCadastrais,
+      ano: record.ano,
+      mes: record.mes
+    });
+
     try {
-      await deleteDadosFinanceiros(id);
+      await deleteDadosFinanceiros(idCorreto);
       
       // Recarregar histórico após exclusão
       setHistoryLoading(true);
       const historico = await getHistoricoPagamentoPorUsuario(selectedIdDadosCadastrais);
-      setHistoryRecords(historico || []);
+      const historicoArray = Array.isArray(historico) ? historico : [];
+      setHistoryRecords(historicoArray);
       
       // Recarregar lista principal
       fetch();
@@ -678,7 +850,8 @@ export default function FinancialListPage() {
         if (selectedIdDadosCadastrais) {
           try {
             const historico = await getHistoricoPagamentoPorUsuario(selectedIdDadosCadastrais);
-            setHistoryRecords(historico || []);
+            const historicoArray = Array.isArray(historico) ? historico : [];
+            setHistoryRecords(historicoArray);
           } catch (e) {
             console.error("Erro ao recarregar histórico:", e);
             setHistoryRecords([]);
@@ -706,165 +879,223 @@ export default function FinancialListPage() {
   // IMPRESSÃO
   // ===============================
   const handlePrint = () => {
-    // Criar HTML para impressão
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("Por favor, permita pop-ups para imprimir.");
-      return;
-    }
+    try {
+      // Criar HTML para impressão
+      const printWindow = window.open("", "_blank", "width=800,height=600");
+      if (!printWindow || printWindow.closed || typeof printWindow.closed === "undefined") {
+        // Fallback: usar window.print() diretamente na página atual
+        alert("Não foi possível abrir a janela de impressão. Tentando imprimir a página atual...");
+        window.print();
+        return;
+      }
 
-    // Gerar cabeçalho da tabela
-    const tableHeaders = `
-      <tr>
-        <th>Matrícula Sistel</th>
-        <th>Matrícula Astel</th>
-        <th>Nome</th>
-        <th>Forma de Pagamento</th>
-        <th>CPF</th>
-        <th>RG</th>
-        <th>Logradouro</th>
-        <th>Número</th>
-        <th>Complemento</th>
-        <th>Bairro</th>
-        <th>Cidade</th>
-        <th>Estado</th>
-        <th>Tipo End.</th>
-        <th>Correspondência</th>
-        <th>CEP</th>
-        <th>Telefone</th>
-        <th>Cel/Skype</th>
-        <th>Email</th>
-        <th>Situação</th>
-        <th>Estado Civil</th>
-        <th>Ativo</th>
-        <th>Inadimplente?</th>
-      </tr>
-    `;
+      // Gerar cabeçalho da tabela
+      const tableHeaders = `
+        <tr>
+          <th>Matrícula Sistel</th>
+          <th>Matrícula Astel</th>
+          <th>Nome</th>
+          <th>Forma de Pagamento</th>
+          <th>CPF</th>
+          <th>RG</th>
+          <th>Logradouro</th>
+          <th>Número</th>
+          <th>Complemento</th>
+          <th>Bairro</th>
+          <th>Cidade</th>
+          <th>Estado</th>
+          <th>Tipo End.</th>
+          <th>Correspondência</th>
+          <th>CEP</th>
+          <th>Telefone</th>
+          <th>Cel/Skype</th>
+          <th>Email</th>
+          <th>Situação</th>
+          <th>Estado Civil</th>
+          <th>Ativo</th>
+          <th>Ano</th>
+          <th>Mês</th>
+          <th>Valor Pago</th>
+          <th>Data Pagamento</th>
+          <th>Inadimplente?</th>
+        </tr>
+      `;
 
-    // Gerar linhas da tabela - exibir todos os registros
-    const tableRows = records
-      .map((record) => {
-        return `
-          <tr>
-            <td>${record.matriculaSistel || ""}</td>
-            <td>${record.matriculaAstel || ""}</td>
-            <td>${record.nome || ""}</td>
-            <td>${record.formaPagamento || "-"}</td>
-            <td>${record.cpf || ""}</td>
-            <td>${record.rg || ""}</td>
-            <td>${record.logradouro || ""}</td>
-            <td>${record.numero || ""}</td>
-            <td>${record.complemento || ""}</td>
-            <td>${record.bairro || ""}</td>
-            <td>${record.cidade || ""}</td>
-            <td>${record.estado || ""}</td>
-            <td>${record.tipoEndereco || ""}</td>
-            <td>${record.correspondencia || ""}</td>
-            <td>${record.cep || ""}</td>
-            <td>${record.telefone || ""}</td>
-            <td>${record.celSkype || ""}</td>
-            <td>${record.email || ""}</td>
-            <td>${record.situacao || ""}</td>
-            <td>${record.estadoCivil || ""}</td>
-            <td>${record.ativo ? "Sim" : "Não"}</td>
-            <td>${record.inadimplente ? "Sim" : "Não"}</td>
-          </tr>
-        `;
-      })
-      .join("");
+      // Gerar linhas da tabela - exibir todos os registros
+      const tableRows = records
+        .map((record) => {
+          const dataPagamento = record.data_Pagamento 
+            ? new Date(record.data_Pagamento).toLocaleString("pt-BR")
+            : "-";
+          
+          return `
+            <tr>
+              <td>${record.matriculaSistel || ""}</td>
+              <td>${record.matriculaAstel || ""}</td>
+              <td>${record.nome || ""}</td>
+              <td>${record.formaPagamento || "-"}</td>
+              <td>${record.cpf || ""}</td>
+              <td>${record.rg || ""}</td>
+              <td>${record.logradouro || ""}</td>
+              <td>${record.numero || ""}</td>
+              <td>${record.complemento || ""}</td>
+              <td>${record.bairro || ""}</td>
+              <td>${record.cidade || ""}</td>
+              <td>${record.estado || ""}</td>
+              <td>${record.tipoEndereco || ""}</td>
+              <td>${record.correspondencia || ""}</td>
+              <td>${record.cep || ""}</td>
+              <td>${record.telefone || ""}</td>
+              <td>${record.celSkype || ""}</td>
+              <td>${record.email || ""}</td>
+              <td>${record.situacao || ""}</td>
+              <td>${record.estadoCivil || ""}</td>
+              <td>${record.ativo ? "Sim" : "Não"}</td>
+              <td>${record.ano ?? "-"}</td>
+              <td>${record.mes ?? "-"}</td>
+              <td>${record.valorPago != null 
+                ? record.valorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                : "-"}</td>
+              <td>${dataPagamento}</td>
+              <td>${record.inadimplente ? "Sim" : "Não"}</td>
+            </tr>
+          `;
+        })
+        .join("");
 
-    // HTML completo com estilos para impressão
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Relatório Financeiro</title>
-          <style>
-            @media print {
-              @page {
-                margin: 1cm;
-                size: A4 landscape;
+      // HTML completo com estilos para impressão
+      const printContent = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Relatório Financeiro</title>
+            <style>
+              @media print {
+                @page {
+                  margin: 1cm;
+                  size: A4 landscape;
+                }
+                body {
+                  margin: 0;
+                  padding: 0;
+                }
+                .no-print {
+                  display: none;
+                }
               }
               body {
-                margin: 0;
-                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 10px;
+                margin: 20px;
+                color: #000;
               }
-            }
-            body {
-              font-family: Arial, sans-serif;
-              font-size: 10px;
-              margin: 20px;
-            }
-            h1 {
-              text-align: center;
-              margin-bottom: 20px;
-              font-size: 18px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 10px;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 6px;
-              text-align: left;
-            }
-            th {
-              background-color: #f2f2f2;
-              font-weight: bold;
-              font-size: 9px;
-            }
-            td {
-              font-size: 9px;
-            }
-            .footer {
-              margin-top: 20px;
-              text-align: right;
-              font-size: 10px;
-            }
-            .total {
-              font-weight: bold;
-              margin-top: 10px;
-              font-size: 11px;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Relatório Financeiro</h1>
-          <div style="margin-bottom: 10px; font-size: 10px;">
-            <strong>Data de impressão:</strong> ${new Date().toLocaleString("pt-BR")}
-          </div>
-          <div style="margin-bottom: 10px; font-size: 10px;">
-            <strong>Total de registros:</strong> ${records.length}
-          </div>
-          <table>
-            <thead>
-              ${tableHeaders}
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
-          <div class="total">
-            <strong>Total de Pagamentos:</strong> ${somaValorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-          </div>
-          <div class="footer">
-            Página ${page} de ${totalPages}
-          </div>
-        </body>
-      </html>
-    `;
+              h1 {
+                text-align: center;
+                margin-bottom: 20px;
+                font-size: 18px;
+                color: #000;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+                page-break-inside: auto;
+              }
+              tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+              }
+              th, td {
+                border: 1px solid #ddd;
+                padding: 6px;
+                text-align: left;
+                word-wrap: break-word;
+              }
+              th {
+                background-color: #f2f2f2;
+                font-weight: bold;
+                font-size: 9px;
+                color: #000;
+              }
+              td {
+                font-size: 9px;
+                color: #000;
+              }
+              .footer {
+                margin-top: 20px;
+                text-align: right;
+                font-size: 10px;
+              }
+              .total {
+                font-weight: bold;
+                margin-top: 10px;
+                font-size: 11px;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Relatório Financeiro</h1>
+            <div style="margin-bottom: 10px; font-size: 10px;">
+              <strong>Data de impressão:</strong> ${new Date().toLocaleString("pt-BR")}
+            </div>
+            <div style="margin-bottom: 10px; font-size: 10px;">
+              <strong>Total de registros:</strong> ${records.length}
+            </div>
+            <table>
+              <thead>
+                ${tableHeaders}
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+            <div class="total">
+              <strong>Total de Pagamentos:</strong> ${somaValorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </div>
+            <div class="footer">
+              Página ${page} de ${totalPages}
+            </div>
+          </body>
+        </html>
+      `;
 
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
-    
-    // Aguardar um pouco para garantir que o conteúdo foi carregado antes de imprimir
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+      printWindow.document.open();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      // Aguardar o carregamento completo antes de imprimir
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+          // Fechar a janela após um tempo (alguns navegadores não fecham automaticamente)
+          setTimeout(() => {
+            if (!printWindow.closed) {
+              printWindow.close();
+            }
+          }, 500);
+        }, 100);
+      };
+      
+      // Fallback caso onload não funcione
+      setTimeout(() => {
+        if (printWindow.document.readyState === "complete") {
+          printWindow.focus();
+          printWindow.print();
+          setTimeout(() => {
+            if (!printWindow.closed) {
+              printWindow.close();
+            }
+          }, 500);
+        }
+      }, 300);
+    } catch (error) {
+      console.error("Erro ao imprimir:", error);
+      alert("Erro ao abrir a janela de impressão. Tentando imprimir a página atual...");
+      window.print();
+    }
   };
 
   const handleConfirmExport = async () => {
@@ -880,7 +1111,6 @@ export default function FinancialListPage() {
         dataInicio,
         dataFim,
         nome,
-        cpf,
         inadimplente,
         formapagamento: formaPagamento,
         colunas: exportColumns
@@ -993,6 +1223,12 @@ export default function FinancialListPage() {
               step="0.01"
               value={valorInsert || ""}
               onChange={(e) => setValorInsert(Number(e.target.value))}
+            />
+            <input
+              type="datetime-local"
+              placeholder="Data Pagamento"
+              value={dataPagamentoInsert}
+              onChange={(e) => setDataPagamentoInsert(e.target.value)}
             />
 
             <button className="import-btn" onClick={handleAddPayment}>
@@ -1254,18 +1490,6 @@ export default function FinancialListPage() {
                   )}
                 </div>
 
-                <div>
-                  <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", fontWeight: "500", color: "#555" }}>
-                    CPF
-                  </label>
-            <input
-              type="text"
-                    placeholder="Digite o CPF..." 
-                    value={cpf} 
-                    onChange={(e) => setCpf(e.target.value)}
-                    style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
-                  />
-                </div>
               </div>
             </div>
 
@@ -1391,6 +1615,7 @@ export default function FinancialListPage() {
 
               <button
                 onClick={handlePrint}
+                type="button"
                 style={{
                   padding: "10px 20px",
                   backgroundColor: "#6c757d",
@@ -1399,7 +1624,16 @@ export default function FinancialListPage() {
                   border: "none",
                   cursor: "pointer",
                   fontWeight: "500",
-                  fontSize: "14px"
+                  fontSize: "14px",
+                  minWidth: "100px",
+                  display: "inline-block",
+                  verticalAlign: "middle"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#5a6268";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#6c757d";
                 }}
               >
                 Imprimir
@@ -1439,6 +1673,10 @@ export default function FinancialListPage() {
                 <th>Situação</th>
                 <th>Estado Civil</th>
                 <th>Ativo</th>
+                <th>Ano</th>
+                <th>Mês</th>
+                <th>Valor Pago</th>
+                <th>Data Pagamento</th>
                 <th>Inadimplente?</th>
 
                 <th>Ações</th>
@@ -1474,6 +1712,18 @@ export default function FinancialListPage() {
                     <td>{record.situacao}</td>
                     <td>{record.estadoCivil}</td>
                     <td>{record.ativo ? "Sim" : "Não"}</td>
+                    <td>{record.ano ?? "-"}</td>
+                    <td>{record.mes ?? "-"}</td>
+                    <td>
+                      {record.valorPago != null 
+                        ? record.valorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                        : "-"}
+                    </td>
+                    <td>
+                      {record.data_Pagamento 
+                        ? new Date(record.data_Pagamento).toLocaleString("pt-BR")
+                        : "-"}
+                    </td>
                     <td style={{ color: record.inadimplente ? "red" : "green" }}>
                       {record.inadimplente ? "Sim" : "Não"}
                     </td>
@@ -1808,35 +2058,64 @@ export default function FinancialListPage() {
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Ano</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Mês</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Valor Pago</th>
+                      <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Data Pagamento</th>
                       <th style={{ padding: "12px", textAlign: "left", fontWeight: "600", fontSize: "14px" }}>Ações</th>
               </tr>
             </thead>
             <tbody>
-                    {historyRecords.map((record) => (
-                      <tr key={record.id} style={{ borderBottom: "1px solid #dee2e6" }}>
-                        <td style={{ padding: "12px", fontSize: "14px" }}>{record.id}</td>
-                        <td style={{ padding: "12px", fontSize: "14px" }}>{record.ano ?? "-"}</td>
-                        <td style={{ padding: "12px", fontSize: "14px" }}>{record.mes ?? "-"}</td>
-                        <td style={{ padding: "12px", fontSize: "14px" }}>
-                          {record.valorPago != null 
-                            ? record.valorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                            : "R$ 0,00"}
+                    {historyRecords.map((record) => {
+                      // Construir o ID correto para exibição: idDadosCadastrais + ano + mês
+                      const idCorreto = record.ano && record.mes 
+                        ? `${record.idDadosCadastrais}${record.ano}${record.mes}`
+                        : record.id;
+                      
+                      return (
+                        <tr key={record.id} style={{ borderBottom: "1px solid #dee2e6" }}>
+                          <td style={{ padding: "12px", fontSize: "14px" }}>{idCorreto}</td>
+                          <td style={{ padding: "12px", fontSize: "14px" }}>{record.ano ?? "-"}</td>
+                          <td style={{ padding: "12px", fontSize: "14px" }}>{record.mes ?? "-"}</td>
+                          <td style={{ padding: "12px", fontSize: "14px" }}>
+                            {record.valorPago != null 
+                              ? record.valorPago.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                              : "R$ 0,00"}
+                      </td>
+                          <td style={{ padding: "12px", fontSize: "14px" }}>
+                            {record.data_Pagamento 
+                              ? new Date(record.data_Pagamento).toLocaleString("pt-BR")
+                              : "-"}
+                          </td>
+                          <td style={{ padding: "12px" }}>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                onClick={() => handleOpenEditModal(record)}
+                                style={{ 
+                                  fontSize: "12px", 
+                                  padding: "6px 12px",
+                                  backgroundColor: "#007bff",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                className="delete-btn"
+                                onClick={() => handleDeleteFromHistory(record)}
+                                style={{ fontSize: "12px", padding: "6px 12px" }}
+                              >
+                                Excluir
+                              </button>
+                            </div>
                     </td>
-                        <td style={{ padding: "12px" }}>
-                          <button
-                            className="delete-btn"
-                            onClick={() => handleDeleteFromHistory(record.id)}
-                            style={{ fontSize: "12px", padding: "6px 12px" }}
-                          >
-                      Excluir
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
                   <tfoot>
                     <tr style={{ backgroundColor: "#f8f9fa", borderTop: "2px solid #dee2e6", fontWeight: "600" }}>
-                      <td style={{ padding: "12px", fontSize: "14px", textAlign: "right" }} colSpan={3}>
+                      <td style={{ padding: "12px", fontSize: "14px", textAlign: "right" }} colSpan={4}>
                         <strong>Total:</strong>
                       </td>
                       <td style={{ padding: "12px", fontSize: "16px", color: "#28a745" }}>
@@ -1870,6 +2149,150 @@ export default function FinancialListPage() {
                 Fechar
             </button>
           </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edição de Pagamento */}
+      {showEditModal && editingRecord && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10001
+          }}
+          onClick={() => setShowEditModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "8px",
+              padding: "24px",
+              maxWidth: "500px",
+              width: "90%",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "600" }}>
+                Editar Pagamento
+              </h2>
+              <button
+                onClick={() => setShowEditModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  color: "#666",
+                  padding: "0",
+                  width: "30px",
+                  height: "30px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: "500", color: "#555" }}>
+                  Ano *
+                </label>
+                <input
+                  type="number"
+                  value={editAno || ""}
+                  onChange={(e) => setEditAno(Number(e.target.value))}
+                  style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: "500", color: "#555" }}>
+                  Mês *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={editMes || ""}
+                  onChange={(e) => setEditMes(Number(e.target.value))}
+                  style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: "500", color: "#555" }}>
+                  Valor Pago *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editValorPago || ""}
+                  onChange={(e) => setEditValorPago(Number(e.target.value))}
+                  style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "4px", fontSize: "14px", fontWeight: "500", color: "#555" }}>
+                  Data Pagamento
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editDataPagamento}
+                  onChange={(e) => setEditDataPagamento(e.target.value)}
+                  style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ddd" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: "24px", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <button
+                onClick={() => setShowEditModal(false)}
+                disabled={editLoading}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: editLoading ? "not-allowed" : "pointer",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  opacity: editLoading ? 0.6 : 1
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={editLoading}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: editLoading ? "#ccc" : "#007bff",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: editLoading ? "not-allowed" : "pointer",
+                  fontWeight: "500",
+                  fontSize: "14px"
+                }}
+              >
+                {editLoading ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
           </div>
         </div>
       )}

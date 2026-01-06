@@ -4,11 +4,12 @@ import { http } from "./httpClient";
  * Tipagem do DTO retornado pela API
  */
 export interface DadosFinanceirosDTO {
-  id: number;
+  id?: string | number;
   idDadosCadastrais: number;
-  ano: number;
-  mes: number;
-  valorPago: number | null;
+  ano?: number;
+  mes?: number;
+  valorPago?: number | null;
+  data_Pagamento?: string | null; // ISO 8601 DateTime
 
   matriculaSistel?: number | null;
   matriculaAstel?: number | null;
@@ -61,20 +62,71 @@ async function handleValidationErrors(res: Response) {
 
 /**
  * Criar novo lançamento financeiro
+ * POST /api/DadosFinanceiros
  */
 export async function createDadosFinanceiros(payload: {
   idDadosCadastrais: number;
-  ano: number;
-  mes: number;
-  valorPago: number;
-}) {
-  const res = await fetch("http://localhost:5000/api/DadosFinanceiros", {
+  ano?: number;
+  mes?: number;
+  valorPago?: number;
+  data_Pagamento?: string; // ISO 8601 DateTime
+}): Promise<{ message: string }> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const res = await fetch(`${baseUrl}/api/DadosFinanceiros`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) await handleValidationErrors(res);
+  if (!res.ok) {
+    if (res.status === 409) {
+      const errorData = await res.json().catch(() => ({ message: "Erro ao atualizar pagamento existente." }));
+      throw new Error(errorData.message || "Erro ao atualizar pagamento existente.");
+    }
+    await handleValidationErrors(res);
+  }
+
+  return await res.json();
+}
+
+/**
+ * Atualizar dados financeiros
+ * PUT /api/DadosFinanceiros/{id}
+ */
+export async function updateDadosFinanceiros(
+  id: number | string,
+  payload: {
+    idDadosCadastrais: number;
+    ano?: number;
+    mes?: number;
+    valorPago?: number;
+    data_Pagamento?: string; // ISO 8601 DateTime
+  }
+): Promise<void> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const res = await fetch(`${baseUrl}/api/DadosFinanceiros/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("Registro não encontrado.");
+    }
+    if (res.status === 409) {
+      const errorData = await res.json().catch(() => ({ message: "Erro de concorrência. O registro pode ter sido modificado ou excluído." }));
+      throw new Error(errorData.message || "Erro de concorrência. O registro pode ter sido modificado ou excluído.");
+    }
+    // Tratar erro 500 (DbUpdateConcurrencyException)
+    if (res.status === 500) {
+      const errorText = await res.text().catch(() => "");
+      if (errorText.includes("DbUpdateConcurrencyException") || errorText.includes("expected to affect 1 row")) {
+        throw new Error("Erro: O registro pode ter sido modificado ou excluído. Por favor, recarregue o histórico e tente novamente.");
+      }
+    }
+    await handleValidationErrors(res);
+  }
 }
 
 /**
@@ -99,6 +151,7 @@ export async function getCadastroPorMatriculaAstel(
 
 /**
  * FILTRO COM PAGINAÇÃO
+ * GET /api/DadosFinanceiros/filtrar
  */
 export async function filtrarFinanceiro(params: {
   nome?: string;
@@ -109,6 +162,7 @@ export async function filtrarFinanceiro(params: {
   dataFim?: string;
   inadimplente?: boolean;
   formapagamento?: string;
+  descontoFolha?: boolean;
 
   cidade?: string;
   estado?: string;
@@ -131,6 +185,9 @@ export async function filtrarFinanceiro(params: {
     query.append("inadimplente", params.inadimplente ? "true" : "false");
 
   if (params.formapagamento) query.append("formapagamento", params.formapagamento);
+  
+  if (params.descontoFolha !== undefined)
+    query.append("descontoFolha", params.descontoFolha ? "true" : "false");
 
   if (params.cidade) query.append("cidade", params.cidade);
   if (params.estado) query.append("estado", params.estado);
@@ -145,6 +202,12 @@ export async function filtrarFinanceiro(params: {
   // somaValorPago e totalRegistros agora vêm dentro do objeto data (primeiro registro ou em qualquer registro)
   let somaValorPago = 0;
   let totalRegistros = Number(response.headers["x-total-count"] ?? 0);
+  
+  // Também verificar o header X-Soma-Valor-Pago
+  const somaValorPagoHeader = response.headers["x-soma-valor-pago"];
+  if (somaValorPagoHeader) {
+    somaValorPago = Number(somaValorPagoHeader);
+  }
   
   if (response.data && Array.isArray(response.data) && response.data.length > 0) {
     // Procurar os campos somaValorPago e totalRegistros no primeiro registro ou em qualquer registro
@@ -175,7 +238,7 @@ export async function filtrarFinanceiro(params: {
     data: response.data,
     totalCount: totalRegistros,
     totalPages: Number(response.headers["x-total-pages"] ?? 1),
-    currentPage: Number(response.headers["x-current-page"] ?? 1),
+    currentPage: Number(response.headers["x-page-number"] ?? response.headers["x-current-page"] ?? 1),
     pageSize: Number(response.headers["x-page-size"] ?? 10),
     somaValorPago: somaValorPago,
   };
@@ -226,6 +289,10 @@ export async function exportarFinanceiroCSV(params: {
 
 /**
  * Mapeamento de nomes de colunas do frontend (camelCase) para API (PascalCase)
+ * Conforme especificação: Id, IdCadastro, MatriculaSistel, MatriculaAstel, Nome, CPF, RG, 
+ * Logradouro, Numero, Complemento, Bairro, Cidade, Estado, TipoEndereco, Correspondencia, 
+ * CEP, Telefone, CelSkype, Email, Situacao, EstadoCivil, Ativo, DescontoFolha, 
+ * FormaPagamento, Ano, Mes, ValorPago, Data_Pagamento, Inadimplente
  */
 const columnNameMap: Record<string, string> = {
   id: "Id",
@@ -255,11 +322,13 @@ const columnNameMap: Record<string, string> = {
   ano: "Ano",
   mes: "Mes",
   valorPago: "ValorPago",
+  data_Pagamento: "Data_Pagamento",
   inadimplente: "Inadimplente"
 };
 
 /**
  * EXPORTAÇÃO XLSX — COM SUPORTE A COLUNAS SELECIONADAS
+ * GET /api/DadosFinanceiros/export/excel/xlsx
  */
 export async function exportarFinanceiroExcel(filtros: {
   dataInicio?: string;
@@ -269,6 +338,7 @@ export async function exportarFinanceiroExcel(filtros: {
   matriculaAstel?: string | number | null;
   inadimplente?: string | boolean;
   formapagamento?: string;
+  descontoFolha?: boolean;
   cidade?: string;
   estado?: string;
   email?: string;
@@ -301,6 +371,9 @@ export async function exportarFinanceiroExcel(filtros: {
   }
 
   if (filtros.formapagamento) params.append("formapagamento", filtros.formapagamento);
+  
+  if (filtros.descontoFolha !== undefined)
+    params.append("descontoFolha", filtros.descontoFolha ? "true" : "false");
 
   if (filtros.cidade) params.append("cidade", filtros.cidade);
   if (filtros.estado) params.append("estado", filtros.estado);
@@ -335,6 +408,7 @@ export async function exportarFinanceiroExcel(filtros: {
 
 /**
  * GERAR MODELO DE IMPORTAÇÃO
+ * GET /api/DadosFinanceiros/gerar-modelo-importacao
  */
 export async function gerarModeloImportacao(filtros: {
   dataInicio?: string;
@@ -344,6 +418,7 @@ export async function gerarModeloImportacao(filtros: {
   matriculaAstel?: string | number | null;
   inadimplente?: string | boolean;
   formapagamento?: string;
+  descontoFolha?: boolean;
   cidade?: string;
   estado?: string;
   email?: string;
@@ -374,6 +449,9 @@ export async function gerarModeloImportacao(filtros: {
   }
 
   if (filtros.formapagamento) params.append("formapagamento", filtros.formapagamento);
+  
+  if (filtros.descontoFolha !== undefined)
+    params.append("descontoFolha", filtros.descontoFolha ? "true" : "false");
 
   if (filtros.cidade) params.append("cidade", filtros.cidade);
   if (filtros.estado) params.append("estado", filtros.estado);
@@ -448,9 +526,10 @@ export interface HistoricoPagamentoDTO {
   id: number;
   idDadosCadastrais: number;
   nome?: string | null;
-  ano: number | null;
-  mes: number | null;
-  valorPago: number | null;
+  ano?: number | null;
+  mes?: number | null;
+  valorPago?: number | null;
+  data_Pagamento?: string | null; // ISO 8601 DateTime
 }
 
 /**
