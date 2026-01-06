@@ -131,8 +131,9 @@ export async function updateDadosFinanceiros(
 
 /**
  * Excluir
+ * DELETE /api/DadosFinanceiros/{id}
  */
-export async function deleteDadosFinanceiros(id: number) {
+export async function deleteDadosFinanceiros(id: number | string) {
   await http.delete(`/DadosFinanceiros/${id}`);
 }
 
