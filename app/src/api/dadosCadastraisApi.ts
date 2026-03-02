@@ -2,6 +2,19 @@ import { http } from "./httpClient";
 import type { User } from "../types/User";
 
 /**
+ * Converte uma string de data (YYYY-MM-DD ou ISO) em ISO 8601,
+ * retornando null quando estiver vazia ou inválida.
+ */
+function normalizeDate(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const date = new Date(trimmed);
+  if (isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+/**
  * Converte campos vazios para null e remove espaços extras
  */
 function cleanPayload(payload: User): User {
@@ -32,6 +45,13 @@ function cleanPayload(payload: User): User {
     email: payload.email?.trim() || null,
     cep: payload.cep?.trim() || null,
     formaPagamento: payload.formaPagamento?.trim() || null,
+    tipoVinculo: payload.tipoVinculo?.trim() || null,
+
+    // Datas de status — enviar null quando estiverem vazias
+    dataAlteracaoStatus: normalizeDate(payload.dataAlteracaoStatus),
+    dataObto: normalizeDate(payload.dataObto),
+    dataInadimplencia: normalizeDate(payload.dataInadimplencia),
+    dataPedidoDesligamento: normalizeDate(payload.dataPedidoDesligamento),
   };
 }
 
@@ -118,6 +138,8 @@ export async function filtrarDadosCadastrais(params: {
   cpf?: string;
   matriculaAstel?: number;
   formapagamento?: string;
+  cidade?: string;
+  estado?: string;
   ativo?: boolean;
   pageNumber?: number;
   pageSize?: number;
@@ -129,6 +151,8 @@ export async function filtrarDadosCadastrais(params: {
   if (params.matriculaAstel)
     query.append("matriculaAstel", params.matriculaAstel.toString());
   if (params.formapagamento) query.append("formapagamento", params.formapagamento);
+  if (params.cidade) query.append("cidade", params.cidade);
+  if (params.estado) query.append("estado", params.estado);
   if (params.ativo !== undefined)
     query.append("ativo", params.ativo ? "true" : "false");
 
@@ -137,12 +161,18 @@ export async function filtrarDadosCadastrais(params: {
 
   const response = await http.get(`/DadosCadastrais?${query.toString()}`);
 
+  const body: any = response.data;
+  const items = Array.isArray(body) ? body : body?.items ?? [];
+
   return {
-    data: response.data,
-    totalCount: Number(response.headers["x-total-count"] ?? 0),
-    totalPages: Number(response.headers["x-total-pages"] ?? 1),
-    currentPage: Number(response.headers["x-current-page"] ?? 1),
-    pageSize: Number(response.headers["x-page-size"] ?? 10),
+    data: items,
+    totalCount: Number(response.headers["x-total-count"] ?? items.length ?? 0),
+    totalPages: Number(
+      response.headers["x-total-pages"] ??
+        (typeof body?.totalPages === "number" ? body.totalPages : 1)
+    ),
+    currentPage: Number(response.headers["x-current-page"] ?? params.pageNumber ?? 1),
+    pageSize: Number(response.headers["x-page-size"] ?? params.pageSize ?? 10),
   };
 }
 
@@ -157,11 +187,15 @@ export interface AutocompleteItem {
 
 export async function autocompleteDadosCadastrais(
   termo: string,
-  limit: number = 10
+  limit: number = 10,
+  ativo?: boolean | null
 ): Promise<AutocompleteItem[]> {
   const query = new URLSearchParams();
   if (termo) query.append("termo", termo);
   if (limit) query.append("limit", limit.toString());
+  if (ativo !== null && ativo !== undefined) {
+    query.append("ativo", ativo ? "true" : "false");
+  }
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
   const response = await fetch(

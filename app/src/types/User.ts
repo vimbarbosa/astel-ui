@@ -29,4 +29,11 @@ export interface User {
   email?: string | null;
   cep?: string | null;
   formaPagamento?: string | null;
+
+  dataAlteracaoStatus?: string | null;
+  dataObto?: string | null;
+  dataInadimplencia?: string | null;
+  dataPedidoDesligamento?: string | null;
+
+  tipoVinculo?: string | null;
 }

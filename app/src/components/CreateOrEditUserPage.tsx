@@ -33,6 +33,9 @@ export function CreateOrEditUserPage() {
         reset({
           ...data,
           situacao: data.situacao ?? "",
+          dataObto: data.dataObto ? String(data.dataObto).split("T")[0] : "",
+          dataInadimplencia: data.dataInadimplencia ? String(data.dataInadimplencia).split("T")[0] : "",
+          dataPedidoDesligamento: data.dataPedidoDesligamento ? String(data.dataPedidoDesligamento).split("T")[0] : "",
         });
       });
     }
@@ -194,21 +197,66 @@ export function CreateOrEditUserPage() {
           </div>
 
           <div className="form-group">
-            <label>Situação</label>
-            <select
-              value={watch("situacao") ?? ""}
-              onChange={(e) => setValue("situacao", e.target.value)}
-              {...register("situacao")}
-            >
-              <option value="">Selecione</option>
-              <option value="BENEFICIÁRIO">Beneficiário</option>
-              <option value="PENSIONISTA">Pensionista</option>
-              <option value="ATIVO">Ativo</option>
-              <option value="INADIMPLENTE">Inadimplente</option>
-              <option value="FALECIDO">Falecido</option>
-              <option value="TITULAR">Titular</option>
-              <option value="INATIVO">Inativo</option>
-            </select>
+            <label>Status</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input
+                  type="radio"
+                  value="ATIVO"
+                  checked={(watch("situacao") ?? "") === "ATIVO"}
+                  onChange={(e) => setValue("situacao", e.target.value)}
+                />
+                <span>Ativo</span>
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input
+                  type="radio"
+                  value="FALECIDO"
+                  checked={(watch("situacao") ?? "") === "FALECIDO"}
+                  onChange={(e) => setValue("situacao", e.target.value)}
+                />
+                <span>Inativo por óbito</span>
+                <input
+                  type="date"
+                  {...register("dataObto")}
+                  style={{ maxWidth: "170px" }}
+                  disabled={(watch("situacao") ?? "") !== "FALECIDO"}
+                />
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input
+                  type="radio"
+                  value="INADIMPLENTE"
+                  checked={(watch("situacao") ?? "") === "INADIMPLENTE"}
+                  onChange={(e) => setValue("situacao", e.target.value)}
+                />
+                <span>Inativo por inadimplência</span>
+                <input
+                  type="date"
+                  {...register("dataInadimplencia")}
+                  style={{ maxWidth: "170px" }}
+                  disabled={(watch("situacao") ?? "") !== "INADIMPLENTE"}
+                />
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input
+                  type="radio"
+                  value="INATIVO"
+                  checked={(watch("situacao") ?? "") === "INATIVO"}
+                  onChange={(e) => setValue("situacao", e.target.value)}
+                />
+                <span>Inativo a pedido</span>
+                <input
+                  type="date"
+                  {...register("dataPedidoDesligamento")}
+                  style={{ maxWidth: "170px" }}
+                  disabled={(watch("situacao") ?? "") !== "INATIVO"}
+                />
+              </label>
+            </div>
           </div>
 
           <div className="form-group">
@@ -229,10 +277,18 @@ export function CreateOrEditUserPage() {
             </select>
           </div>
 
-          <div className="checkbox-row">
-            <label>
-              <input type="checkbox" {...register("ativo")} /> Ativo
-            </label>
+          <div className="form-group">
+            <label>Tipo Vínculo</label>
+            <select
+              value={watch("tipoVinculo") ?? ""}
+              onChange={(e) => setValue("tipoVinculo", e.target.value)}
+              {...register("tipoVinculo")}
+            >
+              <option value="">Selecione</option>
+              <option value="BENEFICIARIO">BENEFICIARIO</option>
+              <option value="PENSIONISTA">PENSIONISTA</option>
+              <option value="TITULAR">TITULAR</option>
+            </select>
           </div>
 
           <div className="form-actions">

@@ -40,12 +40,22 @@ export function EditUserPage() {
     correspondencia: "",
     celSkype: "",
     email: "",
+    dataAlteracaoStatus: "",
+    dataObto: "",
+    dataInadimplencia: "",
+    dataPedidoDesligamento: "",
+    tipoVinculo: "",
   });
 
   async function loadData() {
     setLoading(true);
     const data = await getDadosCadastraisById(Number(matricula));
-    setForm(data);
+    setForm({
+      ...data,
+      dataObto: data.dataObto ? String(data.dataObto).split("T")[0] : "",
+      dataInadimplencia: data.dataInadimplencia ? String(data.dataInadimplencia).split("T")[0] : "",
+      dataPedidoDesligamento: data.dataPedidoDesligamento ? String(data.dataPedidoDesligamento).split("T")[0] : "",
+    });
     setLoading(false);
   }
 
@@ -300,21 +310,76 @@ export function EditUserPage() {
             </div>
 
             <div className="form-group">
-              <label>Situação</label>
-              <select
-                name="situacao"
-                value={form.situacao ?? ""}
-                onChange={handleChange}
-              >
-                <option value="">Selecione</option>
-                <option value="BENEFICIÁRIO">Beneficiário</option>
-                <option value="PENSIONISTA">Pensionista</option>
-                <option value="ATIVO">Ativo</option>
-                <option value="INADIMPLENTE">Inadimplente</option>
-                <option value="FALECIDO">Falecido</option>
-                <option value="TITULAR">Titular</option>
-                <option value="INATIVO">Inativo</option>
-              </select>
+              <label>Status</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <input
+                    type="radio"
+                    name="situacao"
+                    value="ATIVO"
+                    checked={(form.situacao ?? "") === "ATIVO"}
+                    onChange={handleChange}
+                  />
+                  <span>Ativo</span>
+                </label>
+
+                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <input
+                    type="radio"
+                    name="situacao"
+                    value="FALECIDO"
+                    checked={(form.situacao ?? "") === "FALECIDO"}
+                    onChange={handleChange}
+                  />
+                  <span>Inativo por óbito</span>
+                  <input
+                    type="date"
+                    name="dataObto"
+                    value={form.dataObto ?? ""}
+                    onChange={handleChange}
+                    style={{ maxWidth: "170px" }}
+                    disabled={(form.situacao ?? "") !== "FALECIDO"}
+                  />
+                </label>
+
+                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <input
+                    type="radio"
+                    name="situacao"
+                    value="INADIMPLENTE"
+                    checked={(form.situacao ?? "") === "INADIMPLENTE"}
+                    onChange={handleChange}
+                  />
+                  <span>Inativo por inadimplência</span>
+                  <input
+                    type="date"
+                    name="dataInadimplencia"
+                    value={form.dataInadimplencia ?? ""}
+                    onChange={handleChange}
+                    style={{ maxWidth: "170px" }}
+                    disabled={(form.situacao ?? "") !== "INADIMPLENTE"}
+                  />
+                </label>
+
+                <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <input
+                    type="radio"
+                    name="situacao"
+                    value="INATIVO"
+                    checked={(form.situacao ?? "") === "INATIVO"}
+                    onChange={handleChange}
+                  />
+                  <span>Inativo a pedido</span>
+                  <input
+                    type="date"
+                    name="dataPedidoDesligamento"
+                    value={form.dataPedidoDesligamento ?? ""}
+                    onChange={handleChange}
+                    style={{ maxWidth: "170px" }}
+                    disabled={(form.situacao ?? "") !== "INATIVO"}
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="form-group">
@@ -328,19 +393,21 @@ export function EditUserPage() {
               />
             </div>
 
-            <div className="checkbox-row">
-              <label>
-                <input
-                  type="checkbox"
-                  name="ativo"
-                  checked={form.ativo ?? false}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, ativo: e.target.checked }))
-                  }
-                />
-                Ativo
-              </label>
+            <div className="form-group">
+              <label>Tipo Vínculo</label>
+              <select
+                name="tipoVinculo"
+                value={form.tipoVinculo ?? ""}
+                onChange={handleChange}
+              >
+                <option value="">Selecione</option>
+                <option value="BENEFICIARIO">BENEFICIARIO</option>
+                <option value="PENSIONISTA">PENSIONISTA</option>
+                <option value="TITULAR">TITULAR</option>
+              </select>
+            </div>
 
+            <div className="checkbox-row">
               <label>
                 <input
                   type="checkbox"

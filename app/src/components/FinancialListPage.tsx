@@ -348,7 +348,7 @@ export default function FinancialListPage() {
 
     if (value.length >= 2) {
       try {
-        const results = await autocompleteDadosCadastrais(value, 10);
+        const results = await autocompleteDadosCadastrais(value, 10, true);
         setSugestoes(results);
         setShowSuggestions(true);
       } catch (error) {
@@ -375,7 +375,7 @@ export default function FinancialListPage() {
 
     if (value.length >= 2) {
       try {
-        const results = await autocompleteDadosCadastrais(value, 10);
+        const results = await autocompleteDadosCadastrais(value, 10, true);
         setSugestoesFiltro(results);
         setShowSuggestionsFiltro(true);
       } catch (error) {
@@ -563,7 +563,7 @@ export default function FinancialListPage() {
 
     if (value.length >= 2) {
       try {
-        const results = await autocompleteDadosCadastrais(value, 10);
+        const results = await autocompleteDadosCadastrais(value, 10, true);
         setSugestoesRegistro(results);
         setShowSuggestionsRegistro(true);
       } catch (error) {
@@ -1173,7 +1173,7 @@ export default function FinancialListPage() {
                     borderRadius: "4px",
                     maxHeight: "200px",
                     overflowY: "auto",
-                    zIndex: 1000,
+                    zIndex: 10000,
                     boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
                   }}
                 >
@@ -1457,7 +1457,7 @@ export default function FinancialListPage() {
                         borderRadius: "4px",
                         maxHeight: "200px",
                         overflowY: "auto",
-                        zIndex: 1000,
+                        zIndex: 10000,
                         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                         marginTop: "4px"
                       }}
@@ -2581,7 +2581,7 @@ export default function FinancialListPage() {
                         borderRadius: "4px",
                         maxHeight: "200px",
                         overflowY: "auto",
-                        zIndex: 1000,
+                        zIndex: 10000,
                         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                         marginTop: "4px"
                       }}
